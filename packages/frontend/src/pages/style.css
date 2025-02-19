@@ -1,0 +1,36 @@
+.react-flow__node {
+  width: fit-content !important;
+  height: fit-content !important;
+  padding: 0 !important;
+}
+
+.react-flow__node-default {
+  min-width: 80px;
+  min-height: 80px;
+  border-radius: 6px;
+  background: transparent !important;
+  border: none !important;
+}
+
+.react-flow__handle {
+  width: 8px !important;
+  height: 8px !important;
+  background: #64748b !important;
+  border: 2px solid white !important;
+}
+
+.react-flow__handle-right {
+  right: -4px !important;
+}
+
+.react-flow__handle-left {
+  left: -4px !important;
+}
+
+.react-flow__edge-path {
+  stroke-width: 2;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 3;
+}

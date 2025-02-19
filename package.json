@@ -1,0 +1,22 @@
+{
+  "name": "workflow-automation",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build:common": "cd packages/common && npm run build",
+    "build:backend": "cd packages/backend && npm run build",
+    "build": "npm run build:common && npm run build:backend",
+    "dev:frontend": "cd packages/frontend && npm run dev",
+    "dev:backend": "cd packages/backend && npm run start:dev",
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "openai": "^4.85.1",
+    "reflect-metadata": "^0.2.2"
+  }
+}
