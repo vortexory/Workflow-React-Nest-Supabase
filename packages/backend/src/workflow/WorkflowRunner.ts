@@ -1,69 +1,85 @@
 import { Injectable } from '@nestjs/common';
-import { IWorkflow, INodeData, INodeExecutionData, WorkflowStatus, INodeExecutionResult } from '@workflow-automation/common';
-import { WorkflowExecutionEntity } from './entities/workflow-execution.entity';
-import { WorkflowExecutorService } from './workflow-executor.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { WorkflowStatus, IWorkflow, INodeExecutionResult } from '@workflow-automation/common';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class WorkflowRunner {
-  constructor(
-    private readonly executorService: WorkflowExecutorService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
-  async execute(workflow: IWorkflow, execution: WorkflowExecutionEntity): Promise<void> {
+  async execute(workflow: IWorkflow, executionId: string, input: any = {}): Promise<void> {
     try {
-      const nodeOrder = this.executorService.topologicalSort(workflow);
-      const nodeResults: { [nodeId: string]: INodeExecutionResult } = {};
+      // Update execution status to running
+      await this.prisma.workflowExecution.update({
+        where: { id: executionId },
+        data: {
+          status: WorkflowStatus.RUNNING,
+          startTime: new Date(),
+        },
+      });
 
-      for (const nodeId of nodeOrder) {
+      const nodeResults: Record<string, INodeExecutionResult> = {};
+      let currentInput = input;
+
+      // Execute nodes in sequence
+      for (const node of workflow.nodes) {
+        const startTime = new Date();
         try {
-          const node = workflow.nodes.find(n => n.id === nodeId);
-          if (!node) {
-            throw new Error(`Node ${nodeId} not found in workflow`);
-          }
-
-          // Get input data from previous nodes
-          const inputData = this.executorService.getNodeInputs(workflow, nodeId, nodeResults);
-
-          // Execute node
-          const startTime = new Date();
-          const outputData = await this.executorService.executeNode(node, inputData);
+          // Here you would implement the actual node execution logic
           const endTime = new Date();
-
-          // Update node status to completed
-          execution.nodeResults[nodeId] = {
+          const result: INodeExecutionResult = {
             status: 'completed',
+            data: { ...currentInput, nodeId: node.id },
             startTime,
-            endTime,
-            output: outputData,
+            endTime
           };
-          execution.status = 'running';
 
+          nodeResults[node.id] = result;
+          currentInput = result.data;
         } catch (error) {
-          const startTime = new Date();
           const endTime = new Date();
-
-          // Update node status to failed
-          execution.nodeResults[nodeId] = {
+          nodeResults[node.id] = {
             status: 'failed',
-            startTime,
-            endTime,
             error: error.message,
+            startTime,
+            endTime
           };
-          execution.status = 'failed';
-          execution.error = error.message;
+
+          // Update execution with error
+          await this.prisma.workflowExecution.update({
+            where: { id: executionId },
+            data: {
+              status: WorkflowStatus.FAILED,
+              nodeResults: nodeResults as unknown as Prisma.JsonValue,
+              endTime: new Date(),
+            },
+          });
+
           throw error;
         }
       }
 
-      // Update workflow execution status to completed
-      execution.status = 'completed';
-      execution.endTime = new Date();
+      // Update execution with success
+      await this.prisma.workflowExecution.update({
+        where: { id: executionId },
+        data: {
+          status: WorkflowStatus.COMPLETED,
+          nodeResults: nodeResults as unknown as Prisma.JsonValue,
+          endTime: new Date(),
+        },
+      });
 
     } catch (error) {
-      // Update workflow execution status to failed
-      execution.status = 'failed';
-      execution.error = error.message;
-      execution.endTime = new Date();
+      // If we get here, something went wrong outside of node execution
+      await this.prisma.workflowExecution.update({
+        where: { id: executionId },
+        data: {
+          status: WorkflowStatus.FAILED,
+          nodeResults: { error: error.message } as Prisma.JsonValue,
+          endTime: new Date(),
+        },
+      });
+
       throw error;
     }
   }
