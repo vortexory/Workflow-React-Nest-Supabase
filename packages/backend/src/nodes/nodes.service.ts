@@ -1,124 +1,65 @@
 import { Injectable } from '@nestjs/common';
-import { INodeType, INodeConnection, INodeProperty } from '@workflow-automation/common';
-import { NodeCategory } from './base/NodeType';
+import { PrismaService } from '../prisma/prisma.service';
+import { NodeType } from '@prisma/client';
+import { CreateNodeTypeDto } from './dto/create-node-type.dto';
+import { UpdateNodeTypeDto } from './dto/update-node-type.dto';
 
 @Injectable()
 export class NodesService {
-  getAvailableNodes(): INodeType[] {
-    return [
-      {
-        type: 'manualTrigger',
-        displayName: 'Manual Trigger',
-        description: 'Manually trigger a workflow',
-        icon: 'play',
-        color: '#4CAF50',
-        inputs: [],
-        outputs: [
-          {
-            type: 'main',
-            displayName: 'Output',
-          },
-        ],
-        properties: [],
+  constructor(private prisma: PrismaService) {}
+
+  async findAll(): Promise<NodeType[]> {
+    return this.prisma.nodeType.findMany();
+  }
+
+  async findOne(type: string): Promise<NodeType> {
+    const nodeType = await this.prisma.nodeType.findUnique({
+      where: { type },
+    });
+
+    if (!nodeType) {
+      throw new Error(`Node type ${type} not found`);
+    }
+
+    return nodeType;
+  }
+
+  async create(createNodeTypeDto: CreateNodeTypeDto): Promise<NodeType> {
+    return this.prisma.nodeType.create({
+      data: {
+        type: createNodeTypeDto.type,
+        displayName: createNodeTypeDto.displayName,
+        description: createNodeTypeDto.description,
+        icon: createNodeTypeDto.icon,
+        color: createNodeTypeDto.color,
+        inputs: createNodeTypeDto.inputs || [],
+        outputs: createNodeTypeDto.outputs || [],
+        properties: createNodeTypeDto.properties || [],
       },
-      {
-        type: 'rssFeed',
-        displayName: 'RSS Feed',
-        description: 'Fetch data from an RSS feed',
-        icon: 'rss_feed',
-        color: '#FF9800',
-        inputs: [],
-        outputs: [
-          {
-            type: 'main',
-            displayName: 'Items',
-          },
-        ],
-        properties: [
-          {
-            displayName: 'URL',
-            name: 'url',
-            type: 'string',
-            default: '',
-            required: true,
-            description: 'URL of the RSS feed',
-          },
-          {
-            displayName: 'Max Items',
-            name: 'maxItems',
-            type: 'number',
-            default: 10,
-            description: 'Maximum number of items to fetch',
-          },
-        ],
+    });
+  }
+
+  async update(type: string, updateNodeTypeDto: UpdateNodeTypeDto): Promise<NodeType> {
+    await this.findOne(type);
+
+    return this.prisma.nodeType.update({
+      where: { type },
+      data: {
+        displayName: updateNodeTypeDto.displayName,
+        description: updateNodeTypeDto.description,
+        icon: updateNodeTypeDto.icon,
+        color: updateNodeTypeDto.color,
+        inputs: updateNodeTypeDto.inputs,
+        outputs: updateNodeTypeDto.outputs,
+        properties: updateNodeTypeDto.properties,
       },
-      {
-        type: 'openai',
-        displayName: 'OpenAI',
-        description: 'Use OpenAI to generate text',
-        icon: 'smart_toy',
-        color: '#00BCD4',
-        inputs: [
-          {
-            type: 'main',
-            displayName: 'Input',
-          },
-        ],
-        outputs: [
-          {
-            type: 'main',
-            displayName: 'Output',
-          },
-        ],
-        properties: [
-          {
-            displayName: 'API Key',
-            name: 'apiKey',
-            type: 'string',
-            default: '',
-            required: true,
-            description: 'OpenAI API Key',
-          },
-          {
-            displayName: 'Model',
-            name: 'model',
-            type: 'select',
-            options: [
-              {
-                name: 'GPT-4',
-                value: 'gpt-4',
-              },
-              {
-                name: 'GPT-3.5 Turbo',
-                value: 'gpt-3.5-turbo',
-              },
-            ],
-            default: 'gpt-3.5-turbo',
-            description: 'The OpenAI model to use',
-          },
-          {
-            displayName: 'Prompt',
-            name: 'prompt',
-            type: 'string',
-            default: '',
-            description: 'The prompt to send to OpenAI',
-          },
-          {
-            displayName: 'Temperature',
-            name: 'temperature',
-            type: 'number',
-            default: 0.7,
-            description: 'Controls randomness in the output',
-          },
-          {
-            displayName: 'Max Tokens',
-            name: 'maxTokens',
-            type: 'number',
-            default: 1000,
-            description: 'Maximum number of tokens to generate',
-          },
-        ],
-      },
-    ];
+    });
+  }
+
+  async remove(type: string): Promise<void> {
+    await this.findOne(type);
+    await this.prisma.nodeType.delete({
+      where: { type },
+    });
   }
 }

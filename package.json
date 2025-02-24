@@ -13,7 +13,9 @@
     "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\""
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "@types/node": "^22.13.4",
+    "concurrently": "^8.2.2",
+    "ts-node": "^10.9.2"
   },
   "dependencies": {
     "openai": "^4.85.1",

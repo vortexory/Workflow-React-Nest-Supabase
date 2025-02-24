@@ -2,7 +2,6 @@ export interface INodeType {
   type: string;
   displayName: string;
   description: string;
-  icon?: string;
   color?: string;
   inputs: INodeConnection[];
   outputs: INodeConnection[];

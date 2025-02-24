@@ -1,102 +1,115 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { createClient } from '@supabase/supabase-js';
-import { WorkflowEntity } from './entities/workflow.entity';
-import { WorkflowExecutionEntity } from './entities/workflow-execution.entity';
-import { IWorkflow } from '@workflow-automation/common';
-import { ConfigService } from '@nestjs/config';
-import { WorkflowExecutionService } from './workflow-execution.service';
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateWorkflowDto } from './dto/create-workflow.dto';
+import { UpdateWorkflowDto } from './dto/update-workflow.dto';
+import { Workflow, WorkflowExecution } from '@prisma/client';
+import { IWorkflow, IWorkflowExecutionData, WorkflowStatus } from '@workflow-automation/common';
 
 @Injectable()
 export class WorkflowService {
-  private supabase;
+  constructor(private prisma: PrismaService) {}
 
-  constructor(
-    @InjectRepository(WorkflowEntity)
-    private workflowRepository: Repository<WorkflowEntity>,
-    private workflowExecutionService: WorkflowExecutionService,
-    private configService: ConfigService,
-  ) {
-    // Initialize Supabase client
-    this.supabase = createClient(
-      this.configService.get<string>('SUPABASE_URL'),
-      this.configService.get<string>('SUPABASE_KEY')
-    );
+  async create(createWorkflowDto: CreateWorkflowDto): Promise<Workflow> {
+    return this.prisma.workflow.create({
+      data: {
+        name: createWorkflowDto.name,
+        nodes: createWorkflowDto.nodes,
+        edges: createWorkflowDto.edges,
+      },
+    });
   }
 
-  async create(workflow: IWorkflow): Promise<WorkflowEntity> {
-    const workflowEntity = this.workflowRepository.create(workflow);
-    const savedWorkflow = await this.workflowRepository.save(workflowEntity);
-
-    // Sync to Supabase for real-time updates
-    await this.supabase
-      .from('workflows')
-      .upsert({
-        id: savedWorkflow.id,
-        name: savedWorkflow.name,
-        nodes: savedWorkflow.nodes,
-        edges: savedWorkflow.edges,
-        created_at: savedWorkflow.createdAt,
-        updated_at: savedWorkflow.updatedAt,
-      });
-
-    return savedWorkflow;
+  async findAll(): Promise<Workflow[]> {
+    return this.prisma.workflow.findMany({
+      include: {
+        executions: true,
+      },
+    });
   }
 
-  async findAll(): Promise<WorkflowEntity[]> {
-    return this.workflowRepository.find();
-  }
+  async findOne(id: string): Promise<Workflow | null> {
+    const workflow = await this.prisma.workflow.findUnique({
+      where: { id },
+      include: {
+        executions: true,
+      },
+    });
 
-  async findOne(id: string): Promise<WorkflowEntity> {
-    const workflow = await this.workflowRepository.findOne({ where: { id } });
     if (!workflow) {
-      throw new NotFoundException(`Workflow with ID ${id} not found`);
+      throw new Error(`Workflow with ID ${id} not found`);
     }
+
     return workflow;
   }
 
-  async update(id: string, workflow: IWorkflow): Promise<WorkflowEntity> {
-    const existingWorkflow = await this.findOne(id);
-    const updatedWorkflow = {
-      ...existingWorkflow,
-      ...workflow,
-    };
-    await this.workflowRepository.save(updatedWorkflow);
+  async update(id: string, updateWorkflowDto: UpdateWorkflowDto): Promise<Workflow> {
+    const workflow = await this.findOne(id);
 
-    // Sync to Supabase
-    await this.supabase
-      .from('workflows')
-      .upsert({
-        id: updatedWorkflow.id,
-        name: updatedWorkflow.name,
-        nodes: updatedWorkflow.nodes,
-        edges: updatedWorkflow.edges,
-        updated_at: new Date(),
-      });
-
-    return updatedWorkflow;
+    return this.prisma.workflow.update({
+      where: { id },
+      data: {
+        name: updateWorkflowDto.name,
+        nodes: updateWorkflowDto.nodes,
+        edges: updateWorkflowDto.edges,
+      },
+    });
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.workflowRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException(`Workflow with ID ${id} not found`);
+    const workflow = await this.findOne(id);
+    
+    await this.prisma.workflow.delete({
+      where: { id },
+    });
+  }
+
+  async execute(id: string): Promise<WorkflowExecution> {
+    const workflow = await this.findOne(id);
+    
+    const execution = await this.prisma.workflowExecution.create({
+      data: {
+        workflowId: workflow.id,
+        status: 'running',
+        nodeResults: {},
+      },
+    });
+
+    try {
+      // Execute workflow logic here
+      // Update node results as they complete
+      await this.prisma.workflowExecution.update({
+        where: { id: execution.id },
+        data: {
+          status: 'completed',
+          endTime: new Date(),
+        },
+      });
+
+      return execution;
+    } catch (error) {
+      await this.prisma.workflowExecution.update({
+        where: { id: execution.id },
+        data: {
+          status: 'failed',
+          endTime: new Date(),
+        },
+      });
+      throw error;
+    }
+  }
+
+  async getExecution(id: string): Promise<WorkflowExecution> {
+    const execution = await this.prisma.workflowExecution.findUnique({
+      where: { id },
+      include: {
+        workflow: true,
+      },
+    });
+
+    if (!execution) {
+      throw new Error(`Execution with ID ${id} not found`);
     }
 
-    // Remove from Supabase
-    await this.supabase
-      .from('workflows')
-      .delete()
-      .eq('id', id);
-  }
-
-  async execute(workflowId: string, input: any = {}): Promise<WorkflowExecutionEntity> {
-    const workflow = await this.findOne(workflowId);
-    return this.workflowExecutionService.execute(workflow, input);
-  }
-
-  async getExecution(id: string): Promise<WorkflowExecutionEntity> {
-    return this.workflowExecutionService.getExecution(id);
+    return execution;
   }
 }

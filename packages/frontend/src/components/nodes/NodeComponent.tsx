@@ -7,7 +7,7 @@ import { nodeIcons } from '../../lib/icons';
 export const NodeComponent = memo(({ id, data, isConnectable }: NodeProps) => {
   const nodeResults = useAppSelector((state) => state.workflow.nodeResults);
   const nodeResult = nodeResults[id];
-  const Icon = nodeIcons[data.id] || Component;
+  const Icon = nodeIcons[data.type] || Component;
   // Check both type and id for IF nodes
   const isIfNode = data.type === 'if' || data.id === 'if';
 

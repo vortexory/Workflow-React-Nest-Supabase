@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl =  env("DIRECT_URL")
+}
+
+model Workflow {
+  id        String    @id @default(uuid())
+  name      String
+  nodes     Json      @default("[]")
+  edges     Json      @default("[]")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @map("updated_at")
+  executions WorkflowExecution[]
+
+  @@map("workflows")
+}
+
+model WorkflowExecution {
+  id          String    @id @default(uuid())
+  workflowId  String    @map("workflow_id")
+  status      String
+  nodeResults Json      @default("{}") @map("node_results")
+  startTime   DateTime  @default(now()) @map("start_time")
+  endTime     DateTime? @map("end_time")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @map("updated_at")
+  workflow    Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@map("workflow_executions")
+}
+
+model NodeType {
+  id          String   @id @default(uuid())
+  type        String   @unique
+  displayName String   @map("display_name")
+  description String?
+  icon        String?
+  color       String?
+  inputs      Json     @default("[]")
+  outputs     Json     @default("[]")
+  properties  Json     @default("[]")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @map("updated_at")
+
+  @@map("node_types")
+}

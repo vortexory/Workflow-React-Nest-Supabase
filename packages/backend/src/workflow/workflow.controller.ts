@@ -1,15 +1,11 @@
-import { Controller, Get, Post, Body, Param, Delete, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Param, Delete } from '@nestjs/common';
 import { WorkflowService } from './workflow.service';
-import { IWorkflow } from '@workflow-automation/common';
+import { CreateWorkflowDto } from './dto/create-workflow.dto';
+import { UpdateWorkflowDto } from './dto/update-workflow.dto';
 
-@Controller('workflow')
+@Controller('workflows')
 export class WorkflowController {
   constructor(private readonly workflowService: WorkflowService) {}
-
-  @Post()
-  create(@Body() workflow: IWorkflow) {
-    return this.workflowService.create(workflow);
-  }
 
   @Get()
   findAll() {
@@ -21,9 +17,14 @@ export class WorkflowController {
     return this.workflowService.findOne(id);
   }
 
+  @Post()
+  create(@Body() createWorkflowDto: CreateWorkflowDto) {
+    return this.workflowService.create(createWorkflowDto);
+  }
+
   @Put(':id')
-  update(@Param('id') id: string, @Body() workflow: IWorkflow) {
-    return this.workflowService.update(id, workflow);
+  update(@Param('id') id: string, @Body() updateWorkflowDto: UpdateWorkflowDto) {
+    return this.workflowService.update(id, updateWorkflowDto);
   }
 
   @Delete(':id')
@@ -32,12 +33,12 @@ export class WorkflowController {
   }
 
   @Post(':id/execute')
-  execute(@Param('id') id: string, @Body() input: any) {
-    return this.workflowService.execute(id, input);
+  execute(@Param('id') id: string) {
+    return this.workflowService.execute(id);
   }
 
-  @Get('execution/:id')
-  getExecution(@Param('id') id: string) {
+  @Get(':id/executions')
+  getExecutions(@Param('id') id: string) {
     return this.workflowService.getExecution(id);
   }
 }

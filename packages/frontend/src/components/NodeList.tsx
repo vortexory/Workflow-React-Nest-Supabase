@@ -29,7 +29,6 @@ export function NodeList() {
       type: nodeType.type,
       displayName: nodeType.displayName,
       description: nodeType.description,
-      icon: nodeType.icon,
       color: nodeType.color,
       inputs: nodeType.inputs,
       outputs: nodeType.outputs,

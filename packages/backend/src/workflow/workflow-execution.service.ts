@@ -1,93 +1,66 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { createClient } from '@supabase/supabase-js';
-import { ConfigService } from '@nestjs/config';
-import { WorkflowEntity } from './entities/workflow.entity';
-import { WorkflowExecutionEntity } from './entities/workflow-execution.entity';
-import { WorkflowStatus } from '@workflow-automation/common';
-import { WorkflowRunner } from './WorkflowRunner';
+import { PrismaService } from '../prisma/prisma.service';
+import { Workflow, WorkflowExecution } from '@prisma/client';
 
 @Injectable()
 export class WorkflowExecutionService {
-  private supabase;
+  constructor(private prisma: PrismaService) {}
 
-  constructor(
-    @InjectRepository(WorkflowExecutionEntity)
-    private executionRepository: Repository<WorkflowExecutionEntity>,
-    private workflowRunner: WorkflowRunner,
-    private configService: ConfigService,
-  ) {
-    const dbConfig = this.configService.get('database');
-    if (!dbConfig?.supabase?.url || !dbConfig?.supabase?.key) {
-      throw new Error('Supabase configuration is missing. Please set SUPABASE_URL and SUPABASE_KEY environment variables.');
-    }
-
-    // Initialize Supabase client
-    this.supabase = createClient(
-      dbConfig.supabase.url,
-      dbConfig.supabase.key
-    );
-  }
-
-  async execute(workflow: WorkflowEntity, input: any = {}): Promise<WorkflowExecutionEntity> {
-    // Create execution record
-    const execution = this.executionRepository.create({
-      workflowId: workflow.id,
-      status: 'running' as WorkflowStatus,
-      input,
-      nodeResults: {},
+  async execute(workflow: Workflow, input: any = {}): Promise<WorkflowExecution> {
+    const execution = await this.prisma.workflowExecution.create({
+      data: {
+        workflowId: workflow.id,
+        status: 'RUNNING',
+        nodeResults: {},
+      },
     });
-    
-    const savedExecution = await this.executionRepository.save(execution);
 
-    // Sync execution status to Supabase
-    await this.supabase
-      .from('workflow_executions')
-      .upsert({
-        id: savedExecution.id,
-        workflow_id: workflow.id,
-        status: 'running',
-        input,
-        node_results: {},
-        start_time: savedExecution.startTime,
+    try {
+      // Execute workflow logic here
+      // Update node results as they complete
+      const updatedExecution = await this.prisma.workflowExecution.update({
+        where: { id: execution.id },
+        data: {
+          status: 'COMPLETED',
+          endTime: new Date(),
+        },
       });
 
-    // Execute workflow asynchronously
-    this.workflowRunner.execute(workflow, savedExecution).catch(async () => {
-      // The error handling is done in WorkflowRunner
-      await this.saveExecution(savedExecution);
-    });
+      return updatedExecution;
+    } catch (error) {
+      const failedExecution = await this.prisma.workflowExecution.update({
+        where: { id: execution.id },
+        data: {
+          status: 'FAILED',
+          endTime: new Date(),
+        },
+      });
 
-    return savedExecution;
+      throw error;
+    }
   }
 
-  async getExecution(id: string): Promise<WorkflowExecutionEntity> {
-    const execution = await this.executionRepository.findOne({ 
+  async getExecution(id: string): Promise<WorkflowExecution> {
+    const execution = await this.prisma.workflowExecution.findUnique({
       where: { id },
-      relations: ['workflow'],
+      include: {
+        workflow: true,
+      },
     });
-    
+
     if (!execution) {
       throw new Error(`Execution with ID ${id} not found`);
     }
-    
+
     return execution;
   }
 
-  private async saveExecution(execution: WorkflowExecutionEntity): Promise<void> {
-    await this.executionRepository.save(execution);
-
-    // Sync to Supabase
-    await this.supabase
-      .from('workflow_executions')
-      .upsert({
-        id: execution.id,
-        status: execution.status,
-        node_results: execution.nodeResults,
-        output: execution.output,
-        error: execution.error,
-        end_time: execution.endTime,
-      });
+  async updateNodeResults(id: string, nodeResults: any): Promise<WorkflowExecution> {
+    return this.prisma.workflowExecution.update({
+      where: { id },
+      data: {
+        nodeResults,
+      },
+    });
   }
 }
