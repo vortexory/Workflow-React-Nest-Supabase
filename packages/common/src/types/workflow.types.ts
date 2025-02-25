@@ -39,6 +39,7 @@ export interface INodeExecutionResult {
   status: NodeExecutionStatus;
   startTime: Date;
   endTime?: Date;
+  data?: any;
   input?: any;
   output?: any;
   error?: string;

@@ -25,7 +25,7 @@ export class WorkflowProcessor {
       await this.prisma.workflowExecution.update({
         where: { id: executionId },
         data: {
-          status: WorkflowStatus.RUNNING,
+          status: 'running',
           startTime: new Date(),
         },
       });
@@ -59,7 +59,7 @@ export class WorkflowProcessor {
       await this.prisma.workflowExecution.update({
         where: { id: executionId },
         data: {
-          status: WorkflowStatus.COMPLETED,
+          status: 'completed',
           nodeResults: nodeResults as unknown as Prisma.JsonValue,
           endTime: new Date(),
         },
@@ -70,7 +70,7 @@ export class WorkflowProcessor {
       await this.prisma.workflowExecution.update({
         where: { id: executionId },
         data: {
-          status: WorkflowStatus.FAILED,
+          status: 'failed',
           nodeResults: { error: error.message } as Prisma.JsonValue,
           endTime: new Date(),
         },
