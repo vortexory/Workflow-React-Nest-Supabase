@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { readdir, readFile } from 'fs/promises';
+import { readdir, readFile, stat } from 'fs/promises';
 import { join, resolve } from 'path';
 
 export interface NodeDefinition {
@@ -43,38 +43,56 @@ export class NodesService implements OnModuleInit {
     await this.loadNodeDefinitions();
   }
 
+  private async findNodeFiles(dir: string): Promise<string[]> {
+    const nodeFiles: string[] = [];
+    
+    try {
+      const entries = await readdir(dir, { withFileTypes: true });
+      
+      for (const entry of entries) {
+        const fullPath = join(dir, entry.name);
+        
+        if (entry.isDirectory()) {
+          // Recursively search subdirectories
+          const subDirFiles = await this.findNodeFiles(fullPath);
+          nodeFiles.push(...subDirFiles);
+        } else if (entry.isFile() && 
+                  (entry.name.endsWith('.node.ts') || entry.name.endsWith('.node.js'))) {
+          nodeFiles.push(fullPath);
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`Could not read directory ${dir}: ${error.message}`);
+    }
+    
+    return nodeFiles;
+  }
+
   private async loadNodeDefinitions() {
     try {
       this.logger.log('Starting to load node definitions...');
       
-      for (const dir of this.nodesDirs) {
-        this.logger.log(`Checking directory: ${dir}`);
-        try {
-          const files = await readdir(dir);
-          this.logger.log(`Found ${files.length} files in ${dir}`);
-          
-          for (const file of files) {
-            if (file.endsWith('.node.js') || file.endsWith('.node.ts')) {
-              try {
-                const nodePath = join(dir, file);
-                this.logger.log(`Loading node from: ${nodePath}`);
-                
-                const nodeModule = await import(nodePath);
-                const nodeDefinition: NodeDefinition = nodeModule.default;
-                
-                if (nodeDefinition && nodeDefinition.type) {
-                  this.nodeDefinitions.set(nodeDefinition.type, nodeDefinition);
-                  this.logger.log(`Successfully loaded node: ${nodeDefinition.type}`);
-                } else {
-                  this.logger.warn(`Invalid node definition in file: ${file}`);
-                }
-              } catch (error) {
-                this.logger.error(`Error loading node from file ${file}:`, error);
-              }
+      for (const baseDir of this.nodesDirs) {
+        this.logger.log(`Checking base directory: ${baseDir}`);
+        
+        const nodeFiles = await this.findNodeFiles(baseDir);
+        this.logger.log(`Found ${nodeFiles.length} node files in ${baseDir}`);
+        
+        for (const nodePath of nodeFiles) {
+          try {
+            this.logger.log(`Loading node from: ${nodePath}`);
+            const nodeModule = await import(nodePath);
+            const nodeDefinition: NodeDefinition = nodeModule.default;
+            
+            if (nodeDefinition && nodeDefinition.type) {
+              this.nodeDefinitions.set(nodeDefinition.type, nodeDefinition);
+              this.logger.log(`Successfully loaded node: ${nodeDefinition.type}`);
+            } else {
+              this.logger.warn(`Invalid node definition in file: ${nodePath}`);
             }
+          } catch (error) {
+            this.logger.error(`Error loading node from file ${nodePath}:`, error);
           }
-        } catch (error) {
-          this.logger.warn(`Directory not accessible: ${dir}`, error.message);
         }
       }
       
