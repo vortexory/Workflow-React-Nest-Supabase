@@ -22,29 +22,31 @@ export class WorkflowService {
   async findAll(): Promise<Workflow[]> {
     return this.prisma.workflow.findMany({
       include: {
-        executions: true,
+        executions: {
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 1
+        }
       },
     });
   }
 
   async findOne(id: string): Promise<Workflow | null> {
-    const workflow = await this.prisma.workflow.findUnique({
+    return this.prisma.workflow.findUnique({
       where: { id },
       include: {
-        executions: true,
+        executions: {
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 1
+        }
       },
     });
-
-    if (!workflow) {
-      throw new Error(`Workflow with ID ${id} not found`);
-    }
-
-    return workflow;
   }
 
   async update(id: string, updateWorkflowDto: UpdateWorkflowDto): Promise<Workflow> {
-    const workflow = await this.findOne(id);
-
     return this.prisma.workflow.update({
       where: { id },
       data: {
@@ -55,61 +57,41 @@ export class WorkflowService {
     });
   }
 
-  async remove(id: string): Promise<void> {
-    const workflow = await this.findOne(id);
-    
-    await this.prisma.workflow.delete({
+  async remove(id: string): Promise<Workflow> {
+    return this.prisma.workflow.delete({
       where: { id },
     });
   }
 
-  async execute(id: string): Promise<WorkflowExecution> {
-    const workflow = await this.findOne(id);
-    
-    const execution = await this.prisma.workflowExecution.create({
+  async createExecution(workflowId: string): Promise<WorkflowExecution> {
+    return this.prisma.workflowExecution.create({
       data: {
-        workflowId: workflow.id,
+        workflowId,
         status: 'running',
-        nodeResults: {},
       },
     });
-
-    try {
-      // Execute workflow logic here
-      // Update node results as they complete
-      await this.prisma.workflowExecution.update({
-        where: { id: execution.id },
-        data: {
-          status: 'completed',
-          endTime: new Date(),
-        },
-      });
-
-      return execution;
-    } catch (error) {
-      await this.prisma.workflowExecution.update({
-        where: { id: execution.id },
-        data: {
-          status: 'failed',
-          endTime: new Date(),
-        },
-      });
-      throw error;
-    }
   }
 
-  async getExecution(id: string): Promise<WorkflowExecution> {
-    const execution = await this.prisma.workflowExecution.findUnique({
-      where: { id },
-      include: {
-        workflow: true,
-      },
-    });
+  async updateExecution(
+    id: string,
+    status: WorkflowStatus,
+    nodeResults?: Record<string, any>
+  ): Promise<WorkflowExecution> {
+    const data: any = {
+      status,
+    };
 
-    if (!execution) {
-      throw new Error(`Execution with ID ${id} not found`);
+    if (status === 'completed' || status === 'failed') {
+      data.endTime = new Date();
     }
 
-    return execution;
+    if (nodeResults) {
+      data.nodeResults = nodeResults;
+    }
+
+    return this.prisma.workflowExecution.update({
+      where: { id },
+      data,
+    });
   }
 }

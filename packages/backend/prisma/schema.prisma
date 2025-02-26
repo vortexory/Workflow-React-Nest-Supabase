@@ -33,19 +33,3 @@ model WorkflowExecution {
 
   @@map("workflow_executions")
 }
-
-model NodeType {
-  id          String   @id @default(uuid())
-  type        String   @unique
-  displayName String   @map("display_name")
-  description String?
-  icon        String?
-  color       String?
-  inputs      Json     @default("[]")
-  outputs     Json     @default("[]")
-  properties  Json     @default("[]")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @default(now()) @map("updated_at")
-
-  @@map("node_types")
-}

@@ -2,8 +2,9 @@ import { Controller, Get, Post, Body, Put, Param, Delete } from '@nestjs/common'
 import { WorkflowService } from './workflow.service';
 import { CreateWorkflowDto } from './dto/create-workflow.dto';
 import { UpdateWorkflowDto } from './dto/update-workflow.dto';
+import { IWorkflow } from '@workflow-automation/common';
 
-@Controller('workflows')
+@Controller('workflow')
 export class WorkflowController {
   constructor(private readonly workflowService: WorkflowService) {}
 
@@ -33,12 +34,8 @@ export class WorkflowController {
   }
 
   @Post(':id/execute')
-  execute(@Param('id') id: string) {
-    return this.workflowService.execute(id);
-  }
-
-  @Get(':id/executions')
-  getExecutions(@Param('id') id: string) {
-    return this.workflowService.getExecution(id);
+  async execute(@Param('id') id: string) {
+    const execution = await this.workflowService.createExecution(id);
+    return execution;
   }
 }
