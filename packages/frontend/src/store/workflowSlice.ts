@@ -1,26 +1,20 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Node, Edge } from 'reactflow';
-import { WorkflowStatus } from '@workflow-automation/common';
-
-interface INodeResult {
-  status: 'success' | 'error' | 'running';
-  output?: any;
-  error?: string;
-}
+import { INodeType, WorkflowStatus, INodeExecutionResult } from '@workflow-automation/common';
 
 interface WorkflowState {
-  nodes: Node[];
+  nodes: Node<INodeType>[];
   edges: Edge[];
-  selectedNode: Node | null;
   executionStatus: WorkflowStatus;
-  nodeResults: Record<string, INodeResult>;
+  activeNodeId: string | null;
+  nodeResults: Record<string, INodeExecutionResult>;
 }
 
 const initialState: WorkflowState = {
   nodes: [],
   edges: [],
-  selectedNode: null,
-  executionStatus: 'pending',
+  executionStatus: 'idle',
+  activeNodeId: null,
   nodeResults: {},
 };
 
@@ -28,55 +22,45 @@ export const workflowSlice = createSlice({
   name: 'workflow',
   initialState,
   reducers: {
-    setSelectedNode: (state, action: PayloadAction<Node | null>) => {
-      state.selectedNode = action.payload;
-    },
-    addNode: (state, action: PayloadAction<Node>) => {
-      state.nodes.push(action.payload);
-    },
-    updateNode: (state, action: PayloadAction<{ nodeId: string; data: any }>) => {
-      const { nodeId, data } = action.payload;
-      const node = state.nodes.find(n => n.id === nodeId);
-      if (node) {
-        node.data = { ...node.data, ...data };
-      }
-    },
-    removeNode: (state, action: PayloadAction<string>) => {
-      const nodeId = action.payload;
-      state.nodes = state.nodes.filter(node => node.id !== nodeId);
-      state.edges = state.edges.filter(
-        edge => edge.source !== nodeId && edge.target !== nodeId
-      );
-    },
-    setNodes: (state, action: PayloadAction<Node[]>) => {
+    setNodes: (state, action: PayloadAction<Node<INodeType>[]>) => {
       state.nodes = action.payload;
     },
     setEdges: (state, action: PayloadAction<Edge[]>) => {
       state.edges = action.payload;
     },
-    setNodeResult: (state, action: PayloadAction<{ id: string; result: INodeResult }>) => {
+    setExecutionStatus: (state, action: PayloadAction<WorkflowStatus>) => {
+      state.executionStatus = action.payload;
+    },
+    setActiveNodeId: (state, action: PayloadAction<string | null>) => {
+      state.activeNodeId = action.payload;
+    },
+    setNodeResult: (state, action: PayloadAction<{ id: string; result: INodeExecutionResult }>) => {
       const { id, result } = action.payload;
       state.nodeResults[id] = result;
+    },
+    setNodeResults: (state, action: PayloadAction<Record<string, INodeExecutionResult>>) => {
+      state.nodeResults = action.payload;
     },
     clearNodeResults: (state) => {
       state.nodeResults = {};
     },
-    setExecutionStatus: (state, action: PayloadAction<WorkflowStatus>) => {
-      state.executionStatus = action.payload;
+    resetExecution: (state) => {
+      state.executionStatus = 'idle';
+      state.activeNodeId = null;
+      state.nodeResults = {};
     },
   },
 });
 
-export const {
-  setSelectedNode,
-  addNode,
-  updateNode,
-  removeNode,
-  setNodes,
-  setEdges,
+export const { 
+  setNodes, 
+  setEdges, 
+  setExecutionStatus, 
+  setActiveNodeId,
   setNodeResult,
+  setNodeResults,
   clearNodeResults,
-  setExecutionStatus,
+  resetExecution,
 } = workflowSlice.actions;
 
 export default workflowSlice.reducer;

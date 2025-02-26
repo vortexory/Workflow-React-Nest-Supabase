@@ -37,8 +37,9 @@ export type WorkflowStatus =
 
 export interface INodeExecutionResult {
   status: NodeExecutionStatus;
-  startTime: Date;
+  startTime?: Date;
   endTime?: Date;
+  message?: string;
   data?: any;
   input?: any;
   output?: any;

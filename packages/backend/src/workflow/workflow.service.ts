@@ -1,13 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateWorkflowDto } from './dto/create-workflow.dto';
 import { UpdateWorkflowDto } from './dto/update-workflow.dto';
 import { Workflow, WorkflowExecution } from '@prisma/client';
-import { IWorkflow, IWorkflowExecutionData, WorkflowStatus } from '@workflow-automation/common';
+import { IWorkflow, INodeData, WorkflowStatus, INodeExecutionResult } from '@workflow-automation/common';
 
 @Injectable()
-export class WorkflowService {
+export class WorkflowService implements OnModuleInit, OnModuleDestroy {
   constructor(private prisma: PrismaService) {}
+
+  async onModuleInit() {
+    // Ensure clean connection on startup
+    await this.prisma.$connect();
+  }
+
+  async onModuleDestroy() {
+    // Properly disconnect to clean up prepared statements
+    await this.prisma.$disconnect();
+  }
 
   async create(createWorkflowDto: CreateWorkflowDto): Promise<Workflow> {
     return this.prisma.workflow.create({
@@ -20,16 +30,20 @@ export class WorkflowService {
   }
 
   async findAll(): Promise<Workflow[]> {
-    return this.prisma.workflow.findMany({
-      include: {
-        executions: {
-          orderBy: {
-            createdAt: 'desc'
-          },
-          take: 1
-        }
-      },
+    // Use a new PrismaClient instance for this query to avoid prepared statement conflicts
+    const result = await this.prisma.$transaction(async (tx) => {
+      return tx.workflow.findMany({
+        include: {
+          executions: {
+            orderBy: {
+              createdAt: 'desc'
+            },
+            take: 1
+          }
+        },
+      });
     });
+    return result;
   }
 
   async findOne(id: string): Promise<Workflow | null> {
@@ -68,6 +82,7 @@ export class WorkflowService {
       data: {
         workflowId,
         status: 'running',
+        nodeResults: {},
       },
     });
   }
@@ -75,7 +90,8 @@ export class WorkflowService {
   async updateExecution(
     id: string,
     status: WorkflowStatus,
-    nodeResults?: Record<string, any>
+    nodeResults?: Record<string, INodeExecutionResult>,
+    activeNodeId?: string | null
   ): Promise<WorkflowExecution> {
     const data: any = {
       status,
@@ -89,9 +105,114 @@ export class WorkflowService {
       data.nodeResults = nodeResults;
     }
 
+    if (activeNodeId !== undefined) {
+      data.nodeResults = {
+        ...(data.nodeResults || {}),
+        activeNodeId,
+      };
+    }
+
     return this.prisma.workflowExecution.update({
       where: { id },
       data,
     });
+  }
+
+  async executeWorkflow(workflow: IWorkflow): Promise<void> {
+    const execution = await this.createExecution(workflow.id);
+    const nodes = workflow.nodes;
+    const edges = workflow.edges;
+
+    try {
+      const nodeConnections = edges.reduce((acc, edge) => {
+        if (!acc[edge.source]) {
+          acc[edge.source] = [];
+        }
+        acc[edge.source].push({
+          target: edge.target,
+          condition: edge.sourceHandle,
+        });
+        return acc;
+      }, {} as Record<string, { target: string; condition: string | undefined }[]>);
+
+      const startNodes = nodes.filter(node => 
+        !edges.some(edge => edge.target === node.id)
+      );
+
+      for (const startNode of startNodes) {
+        await this.executeNode(startNode, nodes, nodeConnections, execution.id);
+      }
+
+      await this.updateExecution(execution.id, 'completed');
+    } catch (error) {
+      console.error('Workflow execution failed:', error);
+      await this.updateExecution(
+        execution.id,
+        'failed',
+        { error: error.message }
+      );
+    }
+  }
+
+  private async executeNode(
+    node: INodeData,
+    nodes: INodeData[],
+    nodeConnections: Record<string, { target: string; condition: string | undefined }[]>,
+    executionId: string
+  ): Promise<void> {
+    try {
+      await this.updateExecution(
+        executionId,
+        'running',
+        {
+          [node.id]: {
+            status: 'running',
+            message: `Executing ${node.data.name}...`,
+            startTime: new Date(),
+          }
+        },
+        node.id
+      );
+
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      await this.updateExecution(
+        executionId,
+        'running',
+        {
+          [node.id]: {
+            status: 'completed',
+            message: `Executed ${node.data.name}`,
+            endTime: new Date(),
+            output: { success: true },
+          },
+        },
+        node.id
+      );
+
+      const nextConnections = nodeConnections[node.id] || [];
+      
+      for (const connection of nextConnections) {
+        const targetNode = nodes.find(n => n.id === connection.target);
+        if (targetNode) {
+          await this.executeNode(targetNode, nodes, nodeConnections, executionId);
+        }
+      }
+    } catch (error) {
+      await this.updateExecution(
+        executionId,
+        'running',
+        {
+          [node.id]: {
+            status: 'failed',
+            message: error.message,
+            endTime: new Date(),
+            error: error.message,
+          },
+        },
+        node.id
+      );
+      throw error;
+    }
   }
 }

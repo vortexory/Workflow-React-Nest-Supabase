@@ -13,9 +13,9 @@ export const NodeComponent = memo(({ id, data, isConnectable }: NodeProps) => {
   const getBorderColor = () => {
     if (!nodeResult) return '#e2e8f0';
     switch (nodeResult.status) {
-      case 'success':
+      case 'completed':
         return '#22c55e';
-      case 'error':
+      case 'failed':
         return '#ef4444';
       case 'running':
         return '#3b82f6';

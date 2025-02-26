@@ -16,7 +16,7 @@ import ReactFlow, {
 } from 'reactflow';
 import { NodeComponent } from '../components/nodes/NodeComponent';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { setNodes, setEdges, setExecutionStatus } from '../store/workflowSlice';
+import { setNodes, setEdges, setExecutionStatus, setNodeResults, setActiveNodeId, resetExecution } from '../store/workflowSlice';
 import { NodeList } from '../components/NodeList';
 import { NodeSettings } from '../components/NodeSettings';
 import { PlayIcon, AlertCircle, Save, ArrowLeft } from 'lucide-react';
@@ -106,7 +106,7 @@ export default function Editor() {
     if (!workflowId) return;
     const channel = supabase
       .channel('workflow-executions')
-      .on<{ workflowId: string; status: WorkflowStatus }>(
+      .on<{ workflowId: string; status: WorkflowStatus; nodeResults: Record<string, any>; activeNodeId: string | null }>(
         'postgres_changes' as any,
         {
           event: '*',
@@ -114,9 +114,11 @@ export default function Editor() {
           table: 'workflow_executions',
           filter: `workflowId=eq.${workflowId}`,
         },
-        (payload: { new: { workflowId: string; status: WorkflowStatus } | null }) => {
+        (payload: { new: { workflowId: string; status: WorkflowStatus; nodeResults: Record<string, any>; activeNodeId: string | null } | null }) => {
           if (payload.new) {
             dispatch(setExecutionStatus(payload.new.status));
+            dispatch(setNodeResults(payload.new.nodeResults));
+            dispatch(setActiveNodeId(payload.new.activeNodeId));
           }
         }
       )
@@ -215,13 +217,14 @@ export default function Editor() {
   const handleExecuteWorkflow = useCallback(async () => {
     if (!workflowId || nodes.length === 0) return;
 
-    dispatch(setExecutionStatus('running'));
+    // Reset execution state
+    dispatch(resetExecution());
+    
     try {
       await executeWorkflow(workflowId);
-      dispatch(setExecutionStatus('completed'));
     } catch (error) {
-      dispatch(setExecutionStatus('failed'));
       console.error('Failed to execute workflow:', error);
+      dispatch(setExecutionStatus('failed'));
     }
   }, [nodes, dispatch, workflowId]);
 
@@ -236,21 +239,24 @@ export default function Editor() {
         name,
         nodes: nodes.map(node => ({
           id: node.id,
-          type: node.type,
+          type: node.type || 'default',
           position: node.position,
-          data: node.data,
+          data: {
+            name: node.data.displayName,
+            type: node.data.type,
+            settings: node.data.properties?.reduce((acc, prop) => {
+              acc[prop.name] = prop.default;
+              return acc;
+            }, {} as Record<string, any>) || {},
+          },
         })) as INodeData[],
         edges: edges.map(edge => ({
           id: edge.id,
           source: edge.source,
           target: edge.target,
-          sourceHandle: edge.sourceHandle,
-          targetHandle: edge.targetHandle,
-          type: edge.type,
-          animated: edge.animated,
-          style: edge.style,
-          markerEnd: edge.markerEnd,
-        })) as IEdge[],
+          sourceHandle: edge.sourceHandle || undefined,
+          targetHandle: edge.targetHandle || undefined,
+        })),
       };
 
       const savedWorkflow = workflowId 
