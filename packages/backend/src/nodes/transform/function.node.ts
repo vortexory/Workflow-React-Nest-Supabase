@@ -1,4 +1,4 @@
-import { NodeDefinition } from '../../nodes.service';
+import { NodeDefinition } from '../nodes.service';
 
 const functionNode: NodeDefinition = {
   type: 'function',

@@ -34,8 +34,8 @@ export class NodesService implements OnModuleInit {
 
   constructor() {
     // Check both source and dist directories
-    const srcDir = resolve(__dirname, 'definitions');
-    const distDir = resolve(__dirname, '..', '..', 'dist', 'nodes', 'definitions');
+    const srcDir = resolve(__dirname);
+    const distDir = resolve(__dirname, '..', '..', 'dist', 'nodes');
     this.nodesDirs = [srcDir, distDir];
   }
 

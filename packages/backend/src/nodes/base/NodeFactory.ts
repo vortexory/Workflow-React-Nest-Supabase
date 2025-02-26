@@ -1,11 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { BaseNode } from './BaseNode';
-import { OpenAINode } from '../transform/OpenAI.node';
 
 @Injectable()
 export class NodeFactory {
   private nodeTypes: { [key: string]: new () => BaseNode } = {
-    openai: OpenAINode,
   };
 
   registerNodeType(type: string, nodeClass: new () => BaseNode): void {
