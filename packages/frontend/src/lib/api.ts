@@ -13,6 +13,11 @@ export const getNodes = async () => {
   return response.data;
 };
 
+export const getWorkflows = async () => {
+  const response = await api.get('/workflow');
+  return response.data;
+};
+
 export const saveWorkflow = async (workflow: IWorkflow) => {
   const response = await api.post('/workflow', workflow);
   return response.data;

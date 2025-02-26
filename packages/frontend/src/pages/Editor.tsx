@@ -21,9 +21,11 @@ import { NodeList } from '../components/NodeList';
 import { NodeSettings } from '../components/NodeSettings';
 import { PlayIcon, AlertCircle, Save } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
-import { saveWorkflow, executeWorkflow } from '../lib/api';
-import { INodeData, INodeType } from '@workflow-automation/common';
-import { IWorkflow, IEdge, WorkflowStatus } from '@workflow-automation/common';
+import { saveWorkflow, executeWorkflow, getWorkflow } from '../lib/api';
+import { INodeData, INodeType, WorkflowStatus } from '@workflow-automation/common';
+import { IWorkflow, IEdge } from '@workflow-automation/common';
+import { useParams, useNavigate } from 'react-router-dom';
+import { WorkflowNameDialog } from '../components/WorkflowNameDialog';
 import "./style.css";
 
 const nodeTypes = {
@@ -81,8 +83,63 @@ export default function Editor() {
   const [selectedNode, setSelectedNode] = useState<Node<INodeType> | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [workflowId, setWorkflowId] = useState<string | null>(null);
+  const [nameDialogOpen, setNameDialogOpen] = useState(false);
+  const [workflowName, setWorkflowName] = useState('My Workflow');
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (id) {
+      loadWorkflow(id);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (!workflowId) return;
+    const channel = supabase
+      .channel('workflow-executions')
+      .on<{ workflowId: string; status: WorkflowStatus }>(
+        'postgres_changes' as any,
+        {
+          event: '*',
+          schema: 'public',
+          table: 'workflow_executions',
+          filter: `workflowId=eq.${workflowId}`,
+        },
+        (payload: { new: { workflowId: string; status: WorkflowStatus } | null }) => {
+          if (payload.new) {
+            dispatch(setExecutionStatus(payload.new.status));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [workflowId, dispatch]);
+
+  const loadWorkflow = async (workflowId: string) => {
+    try {
+      const workflow = await getWorkflow(workflowId);
+      setWorkflowId(workflow.id);
+      setWorkflowName(workflow.name);
+      
+      // Add edge styles to loaded edges
+      const edgesWithStyle = workflow.edges.map((edge: IEdge) => ({
+        ...edge,
+        ...getEdgeStyle(edge?.sourceHandle ?? null),
+      }));
+      
+      dispatch(setNodes(workflow.nodes));
+      dispatch(setEdges(edgesWithStyle));
+    } catch (error) {
+      console.error('Error loading workflow:', error);
+      navigate('/');
+    }
+  };
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -127,7 +184,6 @@ export default function Editor() {
       const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
       const nodeData = JSON.parse(event.dataTransfer.getData('application/reactflow')) as INodeType;
 
-      // Check if the drop position is within the bounds
       const position = reactFlowInstance.project({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
@@ -153,22 +209,25 @@ export default function Editor() {
   const handleExecuteWorkflow = useCallback(async () => {
     if (!workflowId || nodes.length === 0) return;
 
-    dispatch(setExecutionStatus('running' as WorkflowStatus));
+    dispatch(setExecutionStatus('running'));
     try {
       await executeWorkflow(workflowId);
-      dispatch(setExecutionStatus('completed' as WorkflowStatus));
+      dispatch(setExecutionStatus('completed'));
     } catch (error) {
-      dispatch(setExecutionStatus('failed' as WorkflowStatus));
+      dispatch(setExecutionStatus('failed'));
       console.error('Failed to execute workflow:', error);
     }
   }, [nodes, dispatch, workflowId]);
 
   const handleSaveWorkflow = useCallback(async () => {
     if (nodes.length === 0) return;
+    setNameDialogOpen(true);
+  }, [nodes]);
 
+  const handleSaveWithName = async (name: string) => {
     try {
       const workflow: Omit<IWorkflow, 'id' | 'createdAt' | 'updatedAt'> = {
-        name: 'My Workflow', // TODO: Add workflow name input
+        name,
         nodes: nodes.map(node => ({
           id: node.id,
           type: node.type,
@@ -181,6 +240,10 @@ export default function Editor() {
           target: edge.target,
           sourceHandle: edge.sourceHandle,
           targetHandle: edge.targetHandle,
+          type: edge.type,
+          animated: edge.animated,
+          style: edge.style,
+          markerEnd: edge.markerEnd,
         })) as IEdge[],
       };
 
@@ -189,35 +252,12 @@ export default function Editor() {
         : await saveWorkflow(workflow as IWorkflow);
 
       setWorkflowId(savedWorkflow.id);
+      setWorkflowName(name);
       console.log('Workflow saved successfully');
     } catch (error) {
       console.error('Error saving workflow:', error);
     }
-  }, [nodes, edges, workflowId]);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel('workflow-executions')
-      .on<{ workflowId: string; status: WorkflowStatus }>(
-        'postgres_changes' as any,
-        {
-          event: '*',
-          schema: 'public',
-          table: 'workflow_executions',
-          filter: `workflowId=eq.${workflowId}`,
-        },
-        (payload: { new: { workflowId: string; status: WorkflowStatus } | null }) => {
-          if (payload.new) {
-            dispatch(setExecutionStatus(payload.new.status));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [workflowId, dispatch]);
+  };
 
   return (
     <div className="flex h-screen">
@@ -239,6 +279,7 @@ export default function Editor() {
             <Save size={14} />
             Save
           </button>
+          <span className="text-sm font-medium">{workflowName}</span>
           {executionStatus === 'failed' && (
             <div className="flex items-center gap-1.5 text-sm text-destructive">
               <AlertCircle size={14} />
@@ -253,15 +294,15 @@ export default function Editor() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
-            onInit={setReactFlowInstance}
             onNodeClick={onNodeClick}
             nodeTypes={nodeTypes}
+            onInit={setReactFlowInstance}
             onDrop={onDrop}
             onDragOver={onDragOver}
             fitView
           >
-            <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
             <Controls />
+            <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
           </ReactFlow>
         </div>
       </div>
@@ -274,6 +315,12 @@ export default function Editor() {
           onChange={onSettingsChange}
         />
       )}
+      <WorkflowNameDialog
+        isOpen={nameDialogOpen}
+        onClose={() => setNameDialogOpen(false)}
+        onSave={handleSaveWithName}
+        initialName={workflowName}
+      />
     </div>
   );
 }
