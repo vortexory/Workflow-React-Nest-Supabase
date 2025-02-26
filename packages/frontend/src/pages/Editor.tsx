@@ -19,7 +19,7 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setNodes, setEdges, setExecutionStatus } from '../store/workflowSlice';
 import { NodeList } from '../components/NodeList';
 import { NodeSettings } from '../components/NodeSettings';
-import { PlayIcon, AlertCircle, Save } from 'lucide-react';
+import { PlayIcon, AlertCircle, Save, ArrowLeft } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { saveWorkflow, executeWorkflow, getWorkflow } from '../lib/api';
 import { INodeData, INodeType, WorkflowStatus } from '@workflow-automation/common';
@@ -93,8 +93,14 @@ export default function Editor() {
   useEffect(() => {
     if (id) {
       loadWorkflow(id);
+    } else {
+      // Clear state when creating new workflow
+      setWorkflowId(null);
+      setWorkflowName('My Workflow');
+      dispatch(setNodes([]));
+      dispatch(setEdges([]));
     }
-  }, [id]);
+  }, [id, dispatch]);
 
   useEffect(() => {
     if (!workflowId) return;
@@ -279,13 +285,21 @@ export default function Editor() {
             <Save size={14} />
             Save
           </button>
-          <span className="text-sm font-medium">{workflowName}</span>
+          <span className="text-sm font-medium ml-2">{workflowName}</span>
           {executionStatus === 'failed' && (
             <div className="flex items-center gap-1.5 text-sm text-destructive">
               <AlertCircle size={14} />
               Execution failed
             </div>
           )}
+          <div className="flex-1" />
+          <button
+            onClick={() => navigate('/')}
+            className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft size={14} />
+            Back to List
+          </button>
         </div>
         <div ref={reactFlowWrapper} className="flex-1 h-0">
           <ReactFlow
