@@ -24,7 +24,7 @@
     "axios": "^1.4.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^0.268.0",
+    "lucide-react": "^0.344.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-hook-form": "^7.45.4",
