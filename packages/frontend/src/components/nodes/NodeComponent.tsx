@@ -8,7 +8,7 @@ export const NodeComponent = memo(({ id, data, isConnectable }: NodeProps) => {
   const nodeResult = nodeResults[id];
   const Icon = data.icon ? iconMap[data.icon] || defaultIcon : defaultIcon;
   // Check both type and id for IF nodes
-  const isIfNode = data.type === 'if' || data.id === 'if';
+  const isIfNode = data.type === 'transform/if' || data.id === 'transform/if';
 
   const getBorderColor = () => {
     if (!nodeResult) return '#e2e8f0';

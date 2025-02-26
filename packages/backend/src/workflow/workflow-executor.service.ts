@@ -14,7 +14,7 @@ export class WorkflowExecutorService {
   ): Promise<INodeExecutionData[]> {
     try {
       // Create node instance
-      const nodeInstance = this.nodeFactory.createNode(node.type);
+      const nodeInstance = await this.nodeFactory.createNode(node.type);
 
       // Initialize node with settings
       await nodeInstance.onInit(node.data.settings);

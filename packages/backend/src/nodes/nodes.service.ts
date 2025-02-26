@@ -30,13 +30,10 @@ export interface NodeDefinition {
 export class NodesService implements OnModuleInit {
   private readonly logger = new Logger(NodesService.name);
   private nodeDefinitions: Map<string, NodeDefinition> = new Map();
-  private readonly nodesDirs: string[];
+  private readonly nodeCategories = ['trigger', 'input', 'organization', 'transform'];
 
   constructor() {
-    // Check both source and dist directories
-    const srcDir = resolve(__dirname);
-    const distDir = resolve(__dirname, '..', '..', 'dist', 'nodes');
-    this.nodesDirs = [srcDir, distDir];
+    this.logger.log(`Node categories: ${this.nodeCategories.join(', ')}`);
   }
 
   async onModuleInit() {
@@ -56,8 +53,7 @@ export class NodesService implements OnModuleInit {
           // Recursively search subdirectories
           const subDirFiles = await this.findNodeFiles(fullPath);
           nodeFiles.push(...subDirFiles);
-        } else if (entry.isFile() && 
-                  (entry.name.endsWith('.node.ts') || entry.name.endsWith('.node.js'))) {
+        } else if (entry.isFile() && (entry.name.endsWith('.node.ts') || entry.name.endsWith('.node.js'))) {
           nodeFiles.push(fullPath);
         }
       }
@@ -72,27 +68,37 @@ export class NodesService implements OnModuleInit {
     try {
       this.logger.log('Starting to load node definitions...');
       
-      for (const baseDir of this.nodesDirs) {
-        this.logger.log(`Checking base directory: ${baseDir}`);
+      for (const category of this.nodeCategories) {
+        const categoryDir = resolve(__dirname, category);
+        this.logger.log(`Checking category directory: ${categoryDir}`);
         
-        const nodeFiles = await this.findNodeFiles(baseDir);
-        this.logger.log(`Found ${nodeFiles.length} node files in ${baseDir}`);
-        
-        for (const nodePath of nodeFiles) {
-          try {
-            this.logger.log(`Loading node from: ${nodePath}`);
-            const nodeModule = await import(nodePath);
-            const nodeDefinition: NodeDefinition = nodeModule.default;
-            
-            if (nodeDefinition && nodeDefinition.type) {
-              this.nodeDefinitions.set(nodeDefinition.type, nodeDefinition);
-              this.logger.log(`Successfully loaded node: ${nodeDefinition.type}`);
-            } else {
-              this.logger.warn(`Invalid node definition in file: ${nodePath}`);
+        try {
+          const nodeFiles = await this.findNodeFiles(categoryDir);
+          this.logger.log(`Found ${nodeFiles.length} node files in ${category}`);
+          
+          for (const nodePath of nodeFiles) {
+            try {
+              this.logger.log(`Loading node from: ${nodePath}`);
+              const nodeModule = await import(nodePath);
+              const nodeDefinition: NodeDefinition = nodeModule.default;
+              
+              if (nodeDefinition && nodeDefinition.type) {
+                // Add category to type if not present
+                if (!nodeDefinition.type.includes('/')) {
+                  nodeDefinition.type = `${category}/${nodeDefinition.type}`;
+                }
+                
+                this.nodeDefinitions.set(nodeDefinition.type, nodeDefinition);
+                this.logger.log(`Successfully loaded node: ${nodeDefinition.type}`);
+              } else {
+                this.logger.warn(`Invalid node definition in file: ${nodePath}`);
+              }
+            } catch (error) {
+              this.logger.error(`Error loading node from file ${nodePath}:`, error);
             }
-          } catch (error) {
-            this.logger.error(`Error loading node from file ${nodePath}:`, error);
           }
+        } catch (error) {
+          this.logger.warn(`Category directory not accessible: ${categoryDir}`, error.message);
         }
       }
       
