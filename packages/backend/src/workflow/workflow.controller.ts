@@ -33,9 +33,9 @@ export class WorkflowController {
     return this.workflowService.remove(id);
   }
 
-  @Post(':id/execute')
-  async execute(@Param('id') id: string) {
-    const execution = await this.workflowService.createExecution(id);
-    return execution;
+  @Post('execute')
+  async execute(@Body() workflow: IWorkflow) {
+    await this.workflowService.executeWorkflow(workflow);
+    return { success: true };
   }
 }

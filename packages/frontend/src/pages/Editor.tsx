@@ -214,19 +214,41 @@ export default function Editor() {
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
-  const handleExecuteWorkflow = useCallback(async () => {
-    if (!workflowId || nodes.length === 0) return;
-
-    // Reset execution state
-    dispatch(resetExecution());
-    
+  const handleExecute = useCallback(async () => {
     try {
-      await executeWorkflow(workflowId);
+      dispatch(resetExecution());
+      
+      const workflow: IWorkflow = {
+        id: workflowId || 'temp',
+        name: workflowName || 'Untitled',
+        nodes: nodes.map(node => ({
+          id: node.id,
+          type: node.type || 'default',
+          position: node.position,
+          data: {
+            name: node.data.displayName,
+            type: node.data.type,
+            settings: node.data.properties?.reduce((acc, prop) => {
+              acc[prop.name] = prop.default;
+              return acc;
+            }, {} as Record<string, any>) || {},
+          },
+        })) as INodeData[],
+        edges: edges.map(edge => ({
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          sourceHandle: edge.sourceHandle || undefined,
+          targetHandle: edge.targetHandle || undefined,
+        })),
+      };
+
+      await executeWorkflow(workflow);
+      console.log('Workflow execution started');
     } catch (error) {
-      console.error('Failed to execute workflow:', error);
-      dispatch(setExecutionStatus('failed'));
+      console.error('Error executing workflow:', error);
     }
-  }, [nodes, dispatch, workflowId]);
+  }, [nodes, edges, workflowId, workflowName, dispatch]);
 
   const handleSaveWorkflow = useCallback(async () => {
     if (nodes.length === 0) return;
@@ -276,7 +298,7 @@ export default function Editor() {
       <div className="flex-1 flex flex-col">
         <div className="h-12 border-b flex items-center px-4 gap-2">
           <button
-            onClick={handleExecuteWorkflow}
+            onClick={handleExecute}
             className="inline-flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
             disabled={nodes.length === 0 || executionStatus === 'running'}
           >

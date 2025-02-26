@@ -23,8 +23,8 @@ export const saveWorkflow = async (workflow: IWorkflow) => {
   return response.data;
 };
 
-export const executeWorkflow = async (workflowId: string, input: any = {}) => {
-  const response = await api.post(`/workflow/${workflowId}/execute`, { input });
+export const executeWorkflow = async (workflow: IWorkflow) => {
+  const response = await api.post('/workflow/execute', workflow);
   return response.data;
 };
 
