@@ -7,6 +7,8 @@ import { IWorkflow, INodeData, WorkflowStatus, INodeExecutionResult } from '@wor
 
 @Injectable()
 export class WorkflowService implements OnModuleInit, OnModuleDestroy {
+  private runningWorkflows: Map<string, boolean> = new Map();
+
   constructor(private prisma: PrismaService) {}
 
   async onModuleInit() {
@@ -119,47 +121,83 @@ export class WorkflowService implements OnModuleInit, OnModuleDestroy {
   }
 
   async executeWorkflow(workflow: IWorkflow): Promise<void> {
-    const execution = await this.createExecution(workflow.id);
-    const nodes = workflow.nodes;
-    const edges = workflow.edges;
-
+    this.runningWorkflows.set(workflow.id, true);
+    
     try {
-      const nodeConnections = edges.reduce((acc, edge) => {
-        if (!acc[edge.source]) {
-          acc[edge.source] = [];
+      // Update execution status to running
+      await this.prisma.workflowExecution.create({
+        data: {
+          workflowId: workflow.id,
+          status: 'running',
+          nodeResults: {},
+        },
+      });
+
+      const execution = await this.createExecution(workflow.id);
+      const nodes = workflow.nodes;
+      const edges = workflow.edges;
+
+      try {
+        const nodeConnections = edges.reduce((acc, edge) => {
+          if (!acc[edge.source]) {
+            acc[edge.source] = [];
+          }
+          acc[edge.source].push({
+            target: edge.target,
+            condition: edge.sourceHandle,
+          });
+          return acc;
+        }, {} as Record<string, { target: string; condition: string | undefined }[]>);
+
+        const startNodes = nodes.filter(node => 
+          !edges.some(edge => edge.target === node.id)
+        );
+
+        for (const startNode of startNodes) {
+          await this.executeNode(startNode, workflow, nodes, nodeConnections, execution.id);
         }
-        acc[edge.source].push({
-          target: edge.target,
-          condition: edge.sourceHandle,
-        });
-        return acc;
-      }, {} as Record<string, { target: string; condition: string | undefined }[]>);
 
-      const startNodes = nodes.filter(node => 
-        !edges.some(edge => edge.target === node.id)
-      );
-
-      for (const startNode of startNodes) {
-        await this.executeNode(startNode, nodes, nodeConnections, execution.id);
+        await this.updateExecution(execution.id, 'completed');
+      } catch (error) {
+        console.error('Workflow execution failed:', error);
+        await this.updateExecution(
+          execution.id,
+          'failed',
+          { error: error.message }
+        );
       }
-
-      await this.updateExecution(execution.id, 'completed');
     } catch (error) {
-      console.error('Workflow execution failed:', error);
-      await this.updateExecution(
-        execution.id,
-        'failed',
-        { error: error.message }
-      );
+      this.runningWorkflows.delete(workflow.id);
+      throw error;
     }
+  }
+
+  async stopWorkflow(workflowId: string) {
+    this.runningWorkflows.set(workflowId, false);
+    
+    await this.prisma.workflowExecution.create({
+      data: {
+        workflowId: workflowId,
+        status: 'stopped',
+        nodeResults: {},
+      },
+    });
+
+    return { success: true };
   }
 
   private async executeNode(
     node: INodeData,
+    workflow: IWorkflow,
     nodes: INodeData[],
     nodeConnections: Record<string, { target: string; condition: string | undefined }[]>,
     executionId: string
   ): Promise<void> {
+    // Check if workflow should stop
+    if (!this.runningWorkflows.get(workflow.id)) {
+      return null;
+    }
+
     try {
       await this.updateExecution(
         executionId,
@@ -195,7 +233,7 @@ export class WorkflowService implements OnModuleInit, OnModuleDestroy {
       for (const connection of nextConnections) {
         const targetNode = nodes.find(n => n.id === connection.target);
         if (targetNode) {
-          await this.executeNode(targetNode, nodes, nodeConnections, executionId);
+          await this.executeNode(targetNode, workflow, nodes, nodeConnections, executionId);
         }
       }
     } catch (error) {

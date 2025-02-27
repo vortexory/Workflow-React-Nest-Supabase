@@ -19,9 +19,9 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setNodes, setEdges, setExecutionStatus, setNodeResults, setActiveNodeId, resetExecution } from '../store/workflowSlice';
 import { NodeList } from '../components/NodeList';
 import { NodeSettings } from '../components/NodeSettings';
-import { PlayIcon, AlertCircle, Save, ArrowLeft } from 'lucide-react';
+import { PlayIcon, AlertCircle, Save, ArrowLeft, StopCircle } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
-import { saveWorkflow, executeWorkflow, getWorkflow } from '../lib/api';
+import { saveWorkflow, executeWorkflow, getWorkflow, stopWorkflow } from '../lib/api';
 import { INodeData, INodeType, WorkflowStatus } from '@workflow-automation/common';
 import { IWorkflow, IEdge } from '@workflow-automation/common';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -253,6 +253,24 @@ export default function Editor() {
     }
   }, [nodes, edges, workflowId, workflowName, dispatch]);
 
+  const handleStopWorkflow = useCallback(async () => {
+    try {
+      if (!workflowId) return;
+      await stopWorkflow(workflowId);
+    } catch (error) {
+      console.error('Error stopping workflow:', error);
+    }
+  }, [workflowId]);
+
+  useEffect(() => {
+    return () => {
+      // Stop workflow execution when leaving the page
+      if (workflowId && executionStatus === 'running') {
+        handleStopWorkflow();
+      }
+    };
+  }, [workflowId, executionStatus, handleStopWorkflow]);
+
   const handleSaveWorkflow = useCallback(async () => {
     if (nodes.length === 0) return;
     setNameDialogOpen(true);
@@ -302,14 +320,24 @@ export default function Editor() {
     <div className="flex h-screen">
       <div className="flex-1 flex flex-col">
         <div className="h-12 border-b flex items-center px-4 gap-2">
-          <button
-            onClick={handleExecute}
-            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
-            disabled={nodes.length === 0 || executionStatus === 'running'}
-          >
-            <PlayIcon size={14} />
-            Test
-          </button>
+          {executionStatus === 'running' ? (
+            <button
+              onClick={handleStopWorkflow}
+              className="inline-flex items-center gap-1.5 rounded-md bg-destructive px-2.5 py-1.5 text-sm font-semibold text-destructive-foreground shadow-sm hover:bg-destructive/90"
+            >
+              <StopCircle size={14} />
+              Stop
+            </button>
+          ) : (
+            <button
+              onClick={handleExecute}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
+              disabled={nodes.length === 0}
+            >
+              <PlayIcon size={14} />
+              Test
+            </button>
+          )}
           <button
             onClick={handleSaveWorkflow}
             className="inline-flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"

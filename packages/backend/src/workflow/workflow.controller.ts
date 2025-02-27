@@ -38,4 +38,9 @@ export class WorkflowController {
     await this.workflowService.executeWorkflow(workflow);
     return { success: true };
   }
+
+  @Post(':id/stop')
+  async stopWorkflow(@Param('id') id: string) {
+    return this.workflowService.stopWorkflow(id);
+  }
 }

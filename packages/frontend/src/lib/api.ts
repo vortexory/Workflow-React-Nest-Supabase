@@ -37,3 +37,11 @@ export const updateWorkflow = async (id: string, workflow: IWorkflow) => {
   const response = await api.put(`/workflow/${id}`, workflow);
   return response.data;
 };
+
+export const stopWorkflow = async (workflowId: string) => {
+  const response = await api.post(`/workflow/${workflowId}/stop`);
+  if (!response.data.success) {
+    throw new Error('Failed to stop workflow');
+  }
+  return response.data;
+};
