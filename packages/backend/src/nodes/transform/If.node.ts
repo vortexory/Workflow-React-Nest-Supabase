@@ -2,6 +2,7 @@ import { NodeDefinition } from '../nodes.service';
 
 const ifNode: NodeDefinition = {
   type: 'if',
+  name: 'if',
   displayName: 'IF',
   description: 'Conditional branching based on input',
   icon: 'git-branch',

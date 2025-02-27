@@ -4,6 +4,7 @@ import { join, resolve } from 'path';
 
 export interface NodeDefinition {
   type: string;
+  name: string;
   displayName: string;
   description: string;
   icon?: string;

@@ -2,6 +2,7 @@ import { NodeDefinition } from '../nodes.service';
 
 const splitInBatchesNode: NodeDefinition = {
   type: 'splitInBatches',
+  name: 'splitInBatches',
   displayName: 'Split in Batches',
   description: 'Split input data into batches',
   icon: 'split',

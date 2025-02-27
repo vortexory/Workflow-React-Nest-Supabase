@@ -2,6 +2,7 @@ import { NodeDefinition } from '../nodes.service';
 
 const executeTriggerNode: NodeDefinition = {
   type: 'executeTrigger',
+  name: 'executeTrigger',
   displayName: 'On clicking execute',
   description: 'Triggers when the workflow execution button is clicked',
   icon: 'play',

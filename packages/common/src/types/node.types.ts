@@ -1,7 +1,9 @@
 export interface INodeType {
   type: string;
+  name: string;
   displayName: string;
   description: string;
+  icon?: string;
   color?: string;
   inputs: INodeConnection[];
   outputs: INodeConnection[];
@@ -49,6 +51,7 @@ export interface INodeData {
   };
   data: {
     name: string;
+    displayName: string;
     settings: Record<string, any>;
     [key: string]: any;
   };

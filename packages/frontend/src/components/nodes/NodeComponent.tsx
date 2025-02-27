@@ -10,24 +10,30 @@ export const NodeComponent = memo(({ id, data, isConnectable }: NodeProps) => {
   const Icon = data.icon ? iconMap[data.icon] || defaultIcon : defaultIcon;
   const isIfNode = data.type === 'transform/if' || data.id === 'transform/if';
 
-  const getBorderColor = () => {
-    if (!nodeResult) return '#e2e8f0';
+  const getNodeStyle = () => {
+    const baseStyle = {
+      borderWidth: '2px',
+      borderStyle: 'solid',
+    };
+
+    if (!nodeResult) return { ...baseStyle, borderColor: '#e2e8f0' };
+    
     switch (nodeResult.status) {
       case 'completed':
-        return '#22c55e';
+        return { ...baseStyle, borderColor: '#22c55e' };
       case 'failed':
-        return '#ef4444';
+        return { ...baseStyle, borderColor: '#ef4444' };
       case 'running':
-        return '#3b82f6';
+        return { ...baseStyle, borderColor: '#3b82f6' };
       default:
-        return '#e2e8f0';
+        return { ...baseStyle, borderColor: '#e2e8f0' };
     }
   };
 
   return (
     <div 
       className="relative flex flex-col items-center justify-center gap-2 p-2 bg-white rounded shadow-sm h-24 w-24" 
-      style={{ borderColor: getBorderColor(), border: '2px solid' }}
+      style={getNodeStyle()}
     >
       {/* Main Icon - Show Loader2 when running */}
       {nodeResult?.status === 'running' ? (
@@ -39,7 +45,6 @@ export const NodeComponent = memo(({ id, data, isConnectable }: NodeProps) => {
       ) : (
         <Icon 
           size={40} 
-          className={nodeResult?.status === 'completed' ? 'animate-pulse' : ''}
           style={{ color: data.color || '#64748b' }} 
         />
       )}
@@ -51,7 +56,7 @@ export const NodeComponent = memo(({ id, data, isConnectable }: NodeProps) => {
       {/* Status Icon - Shows check mark when completed */}
       {nodeResult?.status === 'completed' && (
         <div className="absolute -bottom-2 -right-2">
-          <CheckCircle2 className="text-green-500 animate-spin" size={16} />
+          <CheckCircle2 className="text-green-500" size={16} />
         </div>
       )}
 

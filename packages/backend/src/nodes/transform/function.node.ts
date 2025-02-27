@@ -2,6 +2,7 @@ import { NodeDefinition } from '../nodes.service';
 
 const functionNode: NodeDefinition = {
   type: 'function',
+  name: 'function',
   displayName: 'Function',
   description: 'Execute custom JavaScript code',
   icon: 'code',

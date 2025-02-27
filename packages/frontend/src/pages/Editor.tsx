@@ -227,7 +227,10 @@ export default function Editor() {
           type: node.type || 'default',
           position: node.position,
           data: {
-            name: node.data.displayName,
+            name: node.data.name,
+            displayName: node.data.displayName,
+            icon: node.data?.icon,
+            color: node.data?.color,
             type: node.data.type,
             settings: node.data.properties?.reduce((acc, prop) => {
               acc[prop.name] = prop.default;
@@ -264,7 +267,10 @@ export default function Editor() {
           type: node.type || 'default',
           position: node.position,
           data: {
-            name: node.data.displayName,
+            name: node.data.name,
+            displayName: node.data.displayName,
+            icon: node.data?.icon,
+            color: node.data?.color,
             type: node.data.type,
             settings: node.data.properties?.reduce((acc, prop) => {
               acc[prop.name] = prop.default;

@@ -2,6 +2,7 @@ import { NodeDefinition } from '../nodes.service';
 
 const mergeDataNode: NodeDefinition = {
   type: 'mergeData',
+  name: 'mergeData',
   displayName: 'Merge Data',
   description: 'Merge multiple inputs into a single output',
   icon: 'git-merge',

@@ -3,6 +3,7 @@ import Parser from 'rss-parser';
 
 const rssFeedReadNode: NodeDefinition = {
   type: 'rssFeedRead',
+  name: 'rssFeedRead',
   displayName: 'RSS Feed Read',
   description: 'Read items from an RSS feed',
   icon: 'rss',
