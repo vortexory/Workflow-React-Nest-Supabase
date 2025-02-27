@@ -186,6 +186,13 @@ export class WorkflowService implements OnModuleInit, OnModuleDestroy {
     return { success: true };
   }
 
+  async getWorkflowExecutions(workflowId: string) {
+    return this.prisma.workflowExecution.findMany({
+      where: { workflowId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   private async executeNode(
     node: INodeData,
     workflow: IWorkflow,

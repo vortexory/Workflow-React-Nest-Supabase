@@ -18,6 +18,11 @@ export class WorkflowController {
     return this.workflowService.findOne(id);
   }
 
+  @Get(':id/executions')
+  async getWorkflowExecutions(@Param('id') id: string) {
+    return this.workflowService.getWorkflowExecutions(id);
+  }
+
   @Post()
   create(@Body() createWorkflowDto: CreateWorkflowDto) {
     return this.workflowService.create(createWorkflowDto);

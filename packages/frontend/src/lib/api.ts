@@ -45,3 +45,8 @@ export const stopWorkflow = async (workflowId: string) => {
   }
   return response.data;
 };
+
+export const getWorkflowExecutions = async (workflowId: string) => {
+  const response = await api.get(`/workflow/${workflowId}/executions`);
+  return response.data;
+};
