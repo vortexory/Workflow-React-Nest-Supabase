@@ -2,12 +2,12 @@ import { memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { useAppSelector } from '../../store/hooks';
 import { iconMap, defaultIcon } from '../../lib/icons';
+import { Loader2, CheckCircle2 } from 'lucide-react';
 
 export const NodeComponent = memo(({ id, data, isConnectable }: NodeProps) => {
   const nodeResults = useAppSelector((state) => state.workflow.nodeResults);
-  const nodeResult = nodeResults[id];
+  const nodeResult = nodeResults ? nodeResults[id] : undefined;
   const Icon = data.icon ? iconMap[data.icon] || defaultIcon : defaultIcon;
-  // Check both type and id for IF nodes
   const isIfNode = data.type === 'transform/if' || data.id === 'transform/if';
 
   const getBorderColor = () => {
@@ -29,14 +29,31 @@ export const NodeComponent = memo(({ id, data, isConnectable }: NodeProps) => {
       className="relative flex flex-col items-center justify-center gap-2 p-2 bg-white rounded shadow-sm h-24 w-24" 
       style={{ borderColor: getBorderColor(), border: '2px solid' }}
     >
-      <Icon 
-        size={40} 
-        className="shrink-0" 
-        style={{ color: data.color || '#64748b' }} 
-      />
+      {/* Main Icon - Show Loader2 when running */}
+      {nodeResult?.status === 'running' ? (
+        <Loader2 
+          size={40} 
+          className="animate-spin"
+          style={{ color: data.color || '#64748b' }} 
+        />
+      ) : (
+        <Icon 
+          size={40} 
+          className={nodeResult?.status === 'completed' ? 'animate-pulse' : ''}
+          style={{ color: data.color || '#64748b' }} 
+        />
+      )}
+      
       <span className="text-xs text-center font-medium truncate w-full">
         {data.displayName || data.type}
       </span>
+
+      {/* Status Icon - Shows check mark when completed */}
+      {nodeResult?.status === 'completed' && (
+        <div className="absolute -bottom-2 -right-2">
+          <CheckCircle2 className="text-green-500 animate-spin" size={16} />
+        </div>
+      )}
 
       {/* Input Handle */}
       <Handle

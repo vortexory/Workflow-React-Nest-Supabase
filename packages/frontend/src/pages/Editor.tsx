@@ -104,6 +104,7 @@ export default function Editor() {
 
   useEffect(() => {
     if (!workflowId) return;
+
     const channel = supabase
       .channel('workflow-executions')
       .on<{ workflowId: string; status: WorkflowStatus; nodeResults: Record<string, any>; activeNodeId: string | null }>(
@@ -112,13 +113,13 @@ export default function Editor() {
           event: '*',
           schema: 'public',
           table: 'workflow_executions',
-          filter: `workflowId=eq.${workflowId}`,
+          filter: `workflow_id=eq.${workflowId}`,
         },
-        (payload: { new: { workflowId: string; status: WorkflowStatus; nodeResults: Record<string, any>; activeNodeId: string | null } | null }) => {
+        (payload: { new: { workflowId: string; status: WorkflowStatus; node_results: Record<string, any>; activeNodeId: string | null } | null }) => {
           if (payload.new) {
             dispatch(setExecutionStatus(payload.new.status));
-            dispatch(setNodeResults(payload.new.nodeResults));
-            dispatch(setActiveNodeId(payload.new.activeNodeId));
+            dispatch(setNodeResults(payload.new.node_results));
+            dispatch(setActiveNodeId(payload.new.node_results["activeNodeId"]));
           }
         }
       )
@@ -244,7 +245,6 @@ export default function Editor() {
       };
 
       await executeWorkflow(workflow);
-      console.log('Workflow execution started');
     } catch (error) {
       console.error('Error executing workflow:', error);
     }
@@ -287,7 +287,6 @@ export default function Editor() {
 
       setWorkflowId(savedWorkflow.id);
       setWorkflowName(name);
-      console.log('Workflow saved successfully');
     } catch (error) {
       console.error('Error saving workflow:', error);
     }
