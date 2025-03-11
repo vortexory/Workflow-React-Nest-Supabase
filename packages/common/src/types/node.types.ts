@@ -16,7 +16,6 @@ export interface INodeConnection {
 }
 
 export interface INodeProperty {
-  displayName: string;
   name: string;
   type: PropertyType;
   default?: any;
@@ -52,6 +51,7 @@ export interface INodeData {
   data: {
     name: string;
     displayName: string;
+    properties: INodeProperty[];
     settings: Record<string, any>;
     [key: string]: any;
   };

@@ -114,7 +114,7 @@ export function NodeSettings({ node, open, onClose, onChange }: NodeSettingsProp
             onValueChange={field.onChange}
           >
             <SelectTrigger>
-              <SelectValue placeholder={property.placeholder || `Select ${property.displayName}`} />
+              <SelectValue placeholder={property.placeholder || `Select ${property.name}`} />
             </SelectTrigger>
             <SelectContent>
               {property.options?.map((option) => (
@@ -140,6 +140,7 @@ export function NodeSettings({ node, open, onClose, onChange }: NodeSettingsProp
             {...field}
             type={property.type === 'number' ? 'number' : 'text'}
             placeholder={property.placeholder}
+            defaultValue={property.default}
           />
         );
     }
@@ -160,7 +161,7 @@ export function NodeSettings({ node, open, onClose, onChange }: NodeSettingsProp
                 name={property.name}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{property.displayName}</FormLabel>
+                    <FormLabel>{property.name}</FormLabel>
                     <FormControl>
                       {renderFormControl(property, field)}
                     </FormControl>

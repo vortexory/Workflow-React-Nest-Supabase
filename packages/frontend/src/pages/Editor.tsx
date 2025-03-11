@@ -106,8 +106,8 @@ export default function Editor() {
     if (!workflowId) return;
 
     const channel = supabase
-      .channel('workflow-executions')
-      .on<{ workflowId: string; status: WorkflowStatus; nodeResults: Record<string, any>; activeNodeId: string | null }>(
+      .channel(`workflow-executions`)
+      .on(
         'postgres_changes' as any,
         {
           event: '*',
@@ -115,7 +115,8 @@ export default function Editor() {
           table: 'workflow_executions',
           filter: `workflow_id=eq.${workflowId}`,
         },
-        (payload: { new: { workflowId: string; status: WorkflowStatus; node_results: Record<string, any>; activeNodeId: string | null } | null }) => {
+        (payload: { new: { workflow_id: string; status: WorkflowStatus; node_results: Record<string, any> } | null }) => {
+          console.log("*** Payload ***", payload);
           if (payload.new) {
             dispatch(setExecutionStatus(payload.new.status));
             dispatch(setNodeResults(payload.new.node_results));
@@ -176,6 +177,7 @@ export default function Editor() {
   );
 
   const onNodeClick: NodeMouseHandler = useCallback((_: React.MouseEvent, node: Node<INodeType>) => {
+    console.log("Selected Node:", node);
     setSelectedNode(node);
     setSettingsOpen(true);
   }, []);
@@ -232,6 +234,7 @@ export default function Editor() {
             icon: node.data?.icon,
             color: node.data?.color,
             type: node.data.type,
+            properties: node.data.properties,
             settings: node.data.properties?.reduce((acc, prop) => {
               acc[prop.name] = prop.default;
               return acc;
@@ -290,6 +293,7 @@ export default function Editor() {
             icon: node.data?.icon,
             color: node.data?.color,
             type: node.data.type,
+            properties: node.data.properties,
             settings: node.data.properties?.reduce((acc, prop) => {
               acc[prop.name] = prop.default;
               return acc;
