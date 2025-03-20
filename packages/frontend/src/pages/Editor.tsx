@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef, useEffect } from 'react';
+import { useCallback, useState, useRef, useEffect } from "react";
 import ReactFlow, {
   Controls,
   Background,
@@ -13,61 +13,83 @@ import ReactFlow, {
   addEdge,
   ReactFlowInstance,
   MarkerType,
-} from 'reactflow';
-import { NodeComponent } from '../components/nodes/NodeComponent';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { setNodes, setEdges, setExecutionStatus, setNodeResults, setActiveNodeId, resetExecution } from '../store/workflowSlice';
-import { NodeList } from '../components/NodeList';
-import { NodeSettings } from '../components/NodeSettings';
-import { PlayIcon, AlertCircle, Save, ArrowLeft, StopCircle } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
-import { saveWorkflow, executeWorkflow, getWorkflow, stopWorkflow } from '../lib/api';
-import { INodeData, INodeType, WorkflowStatus } from '@workflow-automation/common';
-import { IWorkflow, IEdge } from '@workflow-automation/common';
-import { useParams, useNavigate } from 'react-router-dom';
-import { WorkflowNameDialog } from '../components/WorkflowNameDialog';
+} from "reactflow";
+import { NodeComponent } from "../components/nodes/NodeComponent";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import {
+  setNodes,
+  setEdges,
+  setExecutionStatus,
+  setNodeResults,
+  setActiveNodeId,
+  resetExecution,
+} from "../store/workflowSlice";
+import { NodeList } from "../components/NodeList";
+import { NodeSettings } from "../components/NodeSettings";
+import {
+  PlayIcon,
+  AlertCircle,
+  Save,
+  ArrowLeft,
+  StopCircle,
+} from "lucide-react";
+import { createClient } from "@supabase/supabase-js";
+import {
+  saveWorkflow,
+  executeWorkflow,
+  getWorkflow,
+  stopWorkflow,
+} from "../lib/api";
+import {
+  INodeData,
+  INodeType,
+  WorkflowStatus,
+} from "@workflow-automation/common";
+import { IWorkflow, IEdge } from "@workflow-automation/common";
+import { useParams, useNavigate } from "react-router-dom";
+import { WorkflowNameDialog } from "../components/WorkflowNameDialog";
 import "./style.css";
-
+import LogScreen from "../components/ui/log";
 const nodeTypes = {
   default: NodeComponent,
 };
 
 const getEdgeStyle = (sourceHandle: string | null) => {
-  if (sourceHandle === 'true') {
+  if (sourceHandle === "true") {
     return {
-      type: 'smoothstep',
+      type: "smoothstep",
       animated: true,
-      style: { stroke: '#22c55e', strokeWidth: 1.5 },
+      style: { stroke: "#22c55e", strokeWidth: 1.5 },
       markerEnd: {
         type: MarkerType.ArrowClosed,
         width: 20,
         height: 20,
-        color: '#22c55e',
+        color: "#22c55e",
       },
     };
   }
-  if (sourceHandle === 'false') {
+  if (sourceHandle === "false") {
     return {
-      type: 'smoothstep',
+      type: "smoothstep",
       animated: true,
-      style: { stroke: '#ef4444', strokeWidth: 1.5 },
+      style: { stroke: "#ef4444", strokeWidth: 1.5 },
       markerEnd: {
         type: MarkerType.ArrowClosed,
         width: 20,
         height: 20,
-        color: '#ef4444',
+        color: "#ef4444",
       },
     };
   }
   return {
-    type: 'smoothstep',
+    type: "smoothstep",
     animated: true,
-    style: { stroke: '#64748b', strokeWidth: 1.5 },
+    style: { stroke: "#64748b", strokeWidth: 1.5 },
     markerEnd: {
       type: MarkerType.ArrowClosed,
       width: 20,
       height: 20,
-      color: '#64748b',
+      color: "#64748b",
     },
   };
 };
@@ -79,14 +101,20 @@ const supabase = createClient(
 
 export default function Editor() {
   const dispatch = useAppDispatch();
-  const { nodes, edges, executionStatus } = useAppSelector((state) => state.workflow);
-  const [selectedNode, setSelectedNode] = useState<Node<INodeType> | null>(null);
+  const [visible, setVisible] = useState(false);
+  const { nodes, edges, executionStatus } = useAppSelector(
+    (state) => state.workflow
+  );
+  const [selectedNode, setSelectedNode] = useState<Node<INodeType> | null>(
+    null
+  );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [workflowId, setWorkflowId] = useState<string | null>(null);
   const [nameDialogOpen, setNameDialogOpen] = useState(false);
-  const [workflowName, setWorkflowName] = useState('My Workflow');
+  const [workflowName, setWorkflowName] = useState("My Workflow");
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
+  const [reactFlowInstance, setReactFlowInstance] =
+    useState<ReactFlowInstance | null>(null);
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -96,7 +124,7 @@ export default function Editor() {
     } else {
       // Clear state when creating new workflow
       setWorkflowId(null);
-      setWorkflowName('My Workflow');
+      setWorkflowName("My Workflow");
       dispatch(setNodes([]));
       dispatch(setEdges([]));
     }
@@ -108,14 +136,20 @@ export default function Editor() {
     const channel = supabase
       .channel(`workflow-executions`)
       .on(
-        'postgres_changes' as any,
+        "postgres_changes" as any,
         {
-          event: '*',
-          schema: 'public',
-          table: 'workflow_executions',
+          event: "*",
+          schema: "public",
+          table: "workflow_executions",
           filter: `workflow_id=eq.${workflowId}`,
         },
-        (payload: { new: { workflow_id: string; status: WorkflowStatus; node_results: Record<string, any> } | null }) => {
+        (payload: {
+          new: {
+            workflow_id: string;
+            status: WorkflowStatus;
+            node_results: Record<string, any>;
+          } | null;
+        }) => {
           console.log("*** Payload ***", payload);
           if (payload.new) {
             dispatch(setExecutionStatus(payload.new.status));
@@ -136,18 +170,18 @@ export default function Editor() {
       const workflow = await getWorkflow(workflowId);
       setWorkflowId(workflow.id);
       setWorkflowName(workflow.name);
-      
+
       // Add edge styles to loaded edges
       const edgesWithStyle = workflow.edges.map((edge: IEdge) => ({
         ...edge,
         ...getEdgeStyle(edge?.sourceHandle ?? null),
       }));
-      
+
       dispatch(setNodes(workflow.nodes));
       dispatch(setEdges(edgesWithStyle));
     } catch (error) {
-      console.error('Error loading workflow:', error);
-      navigate('/');
+      console.error("Error loading workflow:", error);
+      navigate("/");
     }
   };
 
@@ -176,15 +210,29 @@ export default function Editor() {
     [edges, dispatch]
   );
 
-  const onNodeClick: NodeMouseHandler = useCallback((_: React.MouseEvent, node: Node<INodeType>) => {
-    console.log("Selected Node:", node);
-    setSelectedNode(node);
-    setSettingsOpen(true);
-  }, []);
+  const onNodeClick: NodeMouseHandler = useCallback(
+    (_: React.MouseEvent, node: Node<INodeType>) => {
+      console.log("Selected Node:", node);
+      setSelectedNode(node);
+      setSettingsOpen(true);
+    },
+    []
+  );
 
-  const onSettingsChange = useCallback((nodeId: string, settings: Record<string, any>) => {
-    dispatch(setNodes(nodes.map((node) => (node.id === nodeId ? { ...node, data: { ...node.data, settings } } : node))));
-  }, [nodes, dispatch]);
+  const onSettingsChange = useCallback(
+    (nodeId: string, settings: Record<string, any>) => {
+      dispatch(
+        setNodes(
+          nodes.map((node) =>
+            node.id === nodeId
+              ? { ...node, data: { ...node.data, settings } }
+              : node
+          )
+        )
+      );
+    },
+    [nodes, dispatch]
+  );
 
   const onDrop = useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
@@ -193,7 +241,9 @@ export default function Editor() {
       if (!reactFlowWrapper.current || !reactFlowInstance) return;
 
       const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
-      const nodeData = JSON.parse(event.dataTransfer.getData('application/reactflow')) as INodeType;
+      const nodeData = JSON.parse(
+        event.dataTransfer.getData("application/reactflow")
+      ) as INodeType;
 
       const position = reactFlowInstance.project({
         x: event.clientX - reactFlowBounds.left,
@@ -202,7 +252,7 @@ export default function Editor() {
 
       const newNode: Node<INodeType> = {
         id: crypto.randomUUID(),
-        type: 'default',
+        type: "default",
         position,
         data: nodeData,
       };
@@ -214,19 +264,19 @@ export default function Editor() {
 
   const onDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
+    event.dataTransfer.dropEffect = "move";
   }, []);
 
   const handleExecute = useCallback(async () => {
     try {
       dispatch(resetExecution());
-      
+
       const workflow: IWorkflow = {
-        id: workflowId || 'temp',
-        name: workflowName || 'Untitled',
-        nodes: nodes.map(node => ({
+        id: workflowId || "temp",
+        name: workflowName || "Untitled",
+        nodes: nodes.map((node) => ({
           id: node.id,
-          type: node.type || 'default',
+          type: node.type || "default",
           position: node.position,
           data: {
             name: node.data.name,
@@ -235,13 +285,17 @@ export default function Editor() {
             color: node.data?.color,
             type: node.data.type,
             properties: node.data.properties,
-            settings: node.data.properties?.reduce((acc, prop) => {
-              acc[prop.name] = prop.default;
-              return acc;
-            }, {} as Record<string, any>) || {},
+            settings:
+              node.data.properties?.reduce(
+                (acc, prop) => {
+                  acc[prop.name] = prop.default;
+                  return acc;
+                },
+                {} as Record<string, any>
+              ) || {},
           },
         })) as INodeData[],
-        edges: edges.map(edge => ({
+        edges: edges.map((edge) => ({
           id: edge.id,
           source: edge.source,
           target: edge.target,
@@ -252,7 +306,7 @@ export default function Editor() {
 
       await executeWorkflow(workflow);
     } catch (error) {
-      console.error('Error executing workflow:', error);
+      console.error("Error executing workflow:", error);
     }
   }, [nodes, edges, workflowId, workflowName, dispatch]);
 
@@ -261,14 +315,14 @@ export default function Editor() {
       if (!workflowId) return;
       await stopWorkflow(workflowId);
     } catch (error) {
-      console.error('Error stopping workflow:', error);
+      console.error("Error stopping workflow:", error);
     }
   }, [workflowId]);
 
   useEffect(() => {
     return () => {
       // Stop workflow execution when leaving the page
-      if (workflowId && executionStatus === 'running') {
+      if (workflowId && executionStatus === "running") {
         handleStopWorkflow();
       }
     };
@@ -281,11 +335,11 @@ export default function Editor() {
 
   const handleSaveWithName = async (name: string) => {
     try {
-      const workflow: Omit<IWorkflow, 'id' | 'createdAt' | 'updatedAt'> = {
+      const workflow: Omit<IWorkflow, "id" | "createdAt" | "updatedAt"> = {
         name,
-        nodes: nodes.map(node => ({
+        nodes: nodes.map((node) => ({
           id: node.id,
-          type: node.type || 'default',
+          type: node.type || "default",
           position: node.position,
           data: {
             name: node.data.name,
@@ -294,13 +348,17 @@ export default function Editor() {
             color: node.data?.color,
             type: node.data.type,
             properties: node.data.properties,
-            settings: node.data.properties?.reduce((acc, prop) => {
-              acc[prop.name] = prop.default;
-              return acc;
-            }, {} as Record<string, any>) || {},
+            settings:
+              node.data.properties?.reduce(
+                (acc, prop) => {
+                  acc[prop.name] = prop.default;
+                  return acc;
+                },
+                {} as Record<string, any>
+              ) || {},
           },
         })) as INodeData[],
-        edges: edges.map(edge => ({
+        edges: edges.map((edge) => ({
           id: edge.id,
           source: edge.source,
           target: edge.target,
@@ -309,22 +367,22 @@ export default function Editor() {
         })),
       };
 
-      const savedWorkflow = workflowId 
+      const savedWorkflow = workflowId
         ? await saveWorkflow({ ...workflow, id: workflowId })
         : await saveWorkflow(workflow as IWorkflow);
 
       setWorkflowId(savedWorkflow.id);
       setWorkflowName(name);
     } catch (error) {
-      console.error('Error saving workflow:', error);
+      console.error("Error saving workflow:", error);
     }
   };
 
   return (
     <div className="flex h-screen">
       <div className="flex-1 flex flex-col">
-        <div className="h-12 border-b flex items-center px-4 gap-2">
-          {executionStatus === 'running' ? (
+        <div className="h-[40px] border-b flex items-center px-4 gap-2 relative">
+          {executionStatus === "running" ? (
             <button
               onClick={handleStopWorkflow}
               className="inline-flex items-center gap-1.5 rounded-md bg-destructive px-2.5 py-1.5 text-sm font-semibold text-destructive-foreground shadow-sm hover:bg-destructive/90"
@@ -350,8 +408,27 @@ export default function Editor() {
             <Save size={14} />
             Save
           </button>
+          {/* Button to toggle the log screen */}
+
+          <div className="absolute top-[20px] left-[calc(50%-90px)] flex justify-center z-[50]">
+            <div className="px-2 py-1 bg-[rgb(217,221,231)] rounded-[6px]">
+              <button
+                className={`rounded-[6px] px-3 py-1 ${visible ? "" : "bg-white"}`}
+                onClick={() => setVisible(false)}
+              >
+                Editor
+              </button>
+              <button
+                className={`rounded-[6px] px-3 py-1 ${visible ? "bg-white" : ""}`}
+                onClick={() => setVisible(true)}
+              >
+                Executions
+              </button>
+            </div>
+          </div>
+
           <span className="text-sm font-medium ml-2">{workflowName}</span>
-          {executionStatus === 'failed' && (
+          {executionStatus === "failed" && (
             <div className="flex items-center gap-1.5 text-sm text-destructive">
               <AlertCircle size={14} />
               Execution failed
@@ -359,14 +436,16 @@ export default function Editor() {
           )}
           <div className="flex-1" />
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate("/")}
             className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft size={14} />
             Back to List
           </button>
         </div>
-        <div ref={reactFlowWrapper} className="flex-1 h-0">
+        <div className="flex-1 flex">
+          {visible && <LogScreen />}
+          <div ref={reactFlowWrapper} className="flex-1"></div>
           <ReactFlow
             nodes={nodes}
             edges={edges}

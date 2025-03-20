@@ -6,14 +6,16 @@
   "tailwind": {
     "config": "tailwind.config.cjs",
     "css": "src/styles/globals.css",
-    "baseColor": "zinc",
+    "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""
   },
   "aliases": {
-    "components": "src/components",
-    "utils": "src/lib/utils",
-    "ui": "src/components/ui"
+    "components": "@workflow-automation/common/components",
+    "utils": "@workflow-automation/common/lib/utils",
+    "ui": "@workflow-automation/common/components/ui",
+    "lib": "@workflow-automation/common/lib",
+    "hooks": "@workflow-automation/common/hooks"
   },
   "iconLibrary": "lucide"
 }

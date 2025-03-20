@@ -42,14 +42,16 @@ export class WorkflowExecutionService {
 
   async getExecution(id: string): Promise<WorkflowExecution> {
     const execution = await this.prisma.workflowExecution.findUnique({
-      where: { id },
+      where: { 
+        id
+       },
       include: {
         workflow: true,
       },
     });
 
     if (!execution) {
-      throw new Error(`Execution with ID ${id} not found`);
+      throw new Error(`Execution with ID ${id} not found or not in a valid status`);
     }
 
     return execution;

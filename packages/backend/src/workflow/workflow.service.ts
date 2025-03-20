@@ -188,7 +188,10 @@ export class WorkflowService implements OnModuleInit, OnModuleDestroy {
 
   async getWorkflowExecutions(workflowId: string) {
     return this.prisma.workflowExecution.findMany({
-      where: { workflowId },
+      where: {
+        workflowId,
+        status: { in: ['completed', 'failed'] }, // Adjusted to lowercase
+      },
       orderBy: { createdAt: 'desc' },
     });
   }

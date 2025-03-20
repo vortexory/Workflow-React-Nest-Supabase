@@ -23,6 +23,7 @@ export interface NodeDefinition {
     type: string;
     required?: boolean;
     default?: any;
+    code?: string;
   }>;
   execute?: (inputs: Record<string, any>, properties: Record<string, any>) => Promise<Record<string, any>>;
 }
