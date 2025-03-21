@@ -32,15 +32,22 @@ const splitInBatchesNode: NodeDefinition = {
     const { items } = inputs;
     const { batchSize } = properties;
 
+    // Validate inputs
     if (!Array.isArray(items)) {
-      throw new Error('Input must be an array');
+      throw new Error('Input "items" must be an array');
     }
 
+    if (typeof batchSize !== 'number' || batchSize <= 0 || !Number.isInteger(batchSize)) {
+      throw new Error('Property "batchSize" must be a positive integer');
+    }
+
+    // Create batches
     const batches = [];
     for (let i = 0; i < items.length; i += batchSize) {
       batches.push(items.slice(i, i + batchSize));
     }
 
+    // Return all batches
     return {
       batch: batches
     };

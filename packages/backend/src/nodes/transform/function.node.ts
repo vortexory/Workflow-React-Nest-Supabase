@@ -12,6 +12,7 @@ const functionNode: NodeDefinition = {
     {
       name: 'input',
       type: 'any',
+      required: true,
     },
   ],
   outputs: [
@@ -24,6 +25,7 @@ const functionNode: NodeDefinition = {
     {
       name: 'code',
       type: 'string',
+      default: 'return input;',
       required: true,
     },
   ],

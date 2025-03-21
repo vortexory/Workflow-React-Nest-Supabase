@@ -32,7 +32,13 @@ const ifNode: NodeDefinition = {
       default: 'input === true'
     }
   ],
-  execute: async (inputs, properties) => {
+  execute: async (inputs = {}, properties) => {
+    console.log('Inputs:', inputs);
+    // Validate inputs
+    if (typeof inputs.value === 'undefined') {
+      throw new Error('Input "value" is required and must be provided.');
+    }
+
     const { value } = inputs;
     const { condition } = properties;
 
