@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { signUp, signInWithGitHub } from "./supabase/authService";
@@ -9,6 +9,7 @@ const Signup = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const navigate = useNavigate();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,7 +17,9 @@ const Signup = () => {
     setSuccess("");
 
     const { error } = await signUp(email, password);
-
+    if (!error) {
+      navigate("/login");
+    }
     if (error) setError(error.message);
     else setSuccess("Signup successful! Check your email for confirmation.");
   };

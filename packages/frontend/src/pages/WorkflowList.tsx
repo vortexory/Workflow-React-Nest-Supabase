@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { getWorkflows } from "../lib/api";
+import { useNavigate } from "react-router-dom";
 import { IWorkflow } from "@workflow-automation/common";
 
 export default function WorkflowList() {
-  const [workflows, setWorkflows] = useState<IWorkflow[]>([]);
-  const [activeStates, setActiveStates] = useState<{ [key: string]: boolean }>({});
-  const [menuOpen, setMenuOpen] = useState<{ [key: string]: boolean }>({});
-
   const navigate = useNavigate();
+  const [workflows, setWorkflows] = useState<IWorkflow[]>([]);
+  const [activeStates, setActiveStates] = useState<{ [key: string]: boolean }>(
+    {}
+  );
+  const [menuOpen, setMenuOpen] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
     loadWorkflows();
@@ -19,10 +20,13 @@ export default function WorkflowList() {
       const data = await getWorkflows();
       setWorkflows(data);
 
-      const initialStates = data.reduce((acc: { [key: string]: boolean }, workflow: IWorkflow) => {
-        acc[workflow.id] = workflow.active ?? false;
-        return acc;
-      }, {} as { [key: string]: boolean });
+      const initialStates = data.reduce(
+        (acc: { [key: string]: boolean }, workflow: IWorkflow) => {
+          acc[workflow.id] = workflow.active ?? false;
+          return acc;
+        },
+        {} as { [key: string]: boolean }
+      );
 
       setActiveStates(initialStates);
     } catch (error) {
@@ -43,7 +47,6 @@ export default function WorkflowList() {
       [id]: !prev[id],
     }));
   };
-
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">

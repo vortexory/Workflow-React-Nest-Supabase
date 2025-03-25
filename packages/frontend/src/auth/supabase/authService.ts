@@ -1,4 +1,4 @@
-import { supabase } from "./supabaseClient";
+import { supabase } from "../supabase/supabaseClient"; // Adjust the path as needed
 
 // Email & Password Signup
 export const signUp = async (email: string, password: string) => {
@@ -12,14 +12,23 @@ export const signIn = async (email: string, password: string) => {
     email,
     password,
   });
+
+  if (error) {
+    console.error("Sign-in error:", error);
+  }
+
   return { data, error };
 };
 
-// GitHub OAuth Login (also works for Signup)
-export const signInWithGitHub = async () => {
+// GitHub OAuth Login (Signup also works)
+export const signInWithGitHub = async () => { 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "github",
+    options: {
+      redirectTo: "http://localhost:3000/auth/callback",
+    },
   });
+
   return { data, error };
 };
 

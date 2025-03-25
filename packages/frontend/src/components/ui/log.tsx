@@ -90,7 +90,7 @@ const LogScreen = () => {
               <span className="font-medium">Filters</span>
             </button>
           </div>
-          <div className="overflow-y-auto h-[calc(90vh-60px)] mt-[10px]">
+          <div className="overflow-y-auto h-[calc(90vh-100px)] mt-[10px]">
             {executions.map((execution) => (
               <div
                 key={execution.id}
