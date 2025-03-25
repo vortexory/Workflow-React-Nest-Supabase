@@ -29,50 +29,42 @@ const rssFeedReadNode: NodeDefinition = {
       default: 10
     }
   ],
-  execute: async (inputs, properties) => {
-    // Use the correct way to instantiate the parser
+  execute: async (data) => {
     const parser = new Parser();
-    const { url } = inputs;
-    const { limit } = properties;
+    const limit = data.settings?.limit || 10;
 
-    // Validate input
-    if (typeof url !== 'string' || !url.trim().length) {
-      throw new Error('Invalid RSS feed URL. Please provide a valid string.');
-    }
-    try {
-      new URL(url); // Validate URL format
-    } catch {
-      throw new Error('Invalid RSS feed URL format.');
-    }
+    // Create an array to store the results for each input
+    const results = [];
 
-    if (typeof limit !== 'number' || limit <= 0 || !Number.isInteger(limit)) {
-      throw new Error('Invalid limit. Please provide a positive integer.');
-    }
+    // Iterate over each input in the data.input array
+    for (let i = 0; i < data.input.length; i++) {
+      const input = data.input[i];
+      
+      // Extract the URL from the current input
+      const url = input.json.url;
 
-    try {
+      // Parse the feed for the current URL
       const feed = await parser.parseURL(url);
 
-      if (!feed || !feed.items || feed.items.length === 0) {
-        return { items: [] }; // Handle empty feed
-      }
-
-      // Extract and normalize items
-      const items = feed.items.slice(0, limit).map(item => ({
-        title: item.title || '',
-        link: item.link || '',
-        pubDate: item.pubDate || '',
-        description: item.contentSnippet || item.description || '',
-        content: item.content || '',
+      // Slice the feed items and map them
+      const feeds = feed.items.slice(0, limit).map((item) => ({
+        title: item.title,
+        link: item.link,
+        pubDate: item.pubDate,
+        content: item.content,
       }));
 
-      return { items };
-    } catch (error) {
-      if (error.message.includes('404')) {
-        throw new Error('RSS feed not found. Please check the URL.');
-      }
-      throw new Error(`Failed to read RSS feed: ${error.message}`);
+      // Add the result with the "input arrangement number"
+      results.push({
+        inputIndex: i,  // This is the "arrangement number" (index)
+        feeds,
+      });
     }
-  }
+
+    // Return the results with the success status
+    return { success: true, output: results };
+  },
+
 };
 
 export default rssFeedReadNode;

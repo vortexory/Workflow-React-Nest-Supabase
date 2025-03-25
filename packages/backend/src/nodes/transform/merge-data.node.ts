@@ -9,13 +9,8 @@ const mergeDataNode: NodeDefinition = {
   color: '#ff922b',
   inputs: [
     {
-      name: 'input1',
-      type: 'any',
-      required: true
-    },
-    {
-      name: 'input2',
-      type: 'any',
+      name: 'inputs',
+      type: 'array',
       required: true
     }
   ],
@@ -33,20 +28,40 @@ const mergeDataNode: NodeDefinition = {
       default: 'combine' // combine, overwrite
     }
   ],
-  execute: async (inputs, properties) => {
-    const { input1, input2 } = inputs;
-    const { mergeType } = properties;
+  execute: async (data) => {
+    console.log("Executing Merge Data Node:", data);
 
-    if (mergeType === 'combine') {
-      if (Array.isArray(input1) && Array.isArray(input2)) {
-        return { output: [...input1, ...input2] };
-      } else if (typeof input1 === 'object' && typeof input2 === 'object') {
-        return { output: { ...input1, ...input2 } };
-      }
+    const inputs = data.input || [];
+    const properties = data.settings || {};
+    const mergeType = properties.mergeType || "combine";
+
+    // Validate inputs
+    if (!Array.isArray(inputs) || inputs.length === 0) {
+      throw new Error('Input "inputs" must be a non-empty array.');
     }
 
-    // For overwrite or simple values
-    return { output: input2 };
+    // Validate mergeType
+    if (!['combine', 'overwrite'].includes(mergeType)) {
+      throw new Error('Invalid "mergeType". Allowed values are "combine" or "overwrite".');
+    }
+
+    let output;
+    if (mergeType === 'combine') {
+      if (inputs.every(item => Array.isArray(item))) {
+        // Combine arrays
+        output = inputs.flat();
+      } else if (inputs.every(item => typeof item === 'object' && !Array.isArray(item))) {
+        // Combine objects
+        output = Object.assign({}, ...inputs);
+      } else {
+        throw new Error('For "combine", all inputs must be arrays or objects.');
+      }
+    } else if (mergeType === 'overwrite') {
+      // For "overwrite", return the last input
+      output = inputs[inputs.length - 1];
+    }
+
+    return { success: true, output: output };
   }
 };
 

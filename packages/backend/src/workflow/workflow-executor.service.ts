@@ -1,26 +1,31 @@
 import { Injectable } from '@nestjs/common';
 import { IWorkflow, INodeData, INodeExecutionData, INodeExecutionResult } from '@workflow-automation/common';
-import { NodeFactory } from '../nodes/base/NodeFactory';
+import { nodeDatabase } from '../nodes/node-database';
 
 @Injectable()
 export class WorkflowExecutorService {
-  constructor(
-    private readonly nodeFactory: NodeFactory,
-  ) {}
+  constructor() {}
 
   async executeNode(
     node: INodeData,
     inputData: INodeExecutionData[] = []
   ): Promise<INodeExecutionData[]> {
     try {
-      // Create node instance
-      const nodeInstance = await this.nodeFactory.createNode(node.type);
+      // Use nodeDatabase to execute the node
+      if (!nodeDatabase[node.type]) {
+        throw new Error(`No executor found for node type: ${node.type}`);
+      }
 
-      // Initialize node with settings
-      await nodeInstance.onInit(node.data.settings);
+      const result = await nodeDatabase[node.type].execute({
+        input: inputData,
+        settings: node.data.settings,
+      });
 
-      // Execute node
-      return await nodeInstance.execute(inputData);
+      if (result.success) {
+        return result.output || [];
+      } else {
+        throw new Error(result.error || 'Node execution failed');
+      }
     } catch (error) {
       throw new Error(`Error executing node ${node.data.name}: ${error.message}`);
     }

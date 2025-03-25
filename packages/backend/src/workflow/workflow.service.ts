@@ -4,7 +4,7 @@ import { CreateWorkflowDto } from './dto/create-workflow.dto';
 import { UpdateWorkflowDto } from './dto/update-workflow.dto';
 import { Workflow, WorkflowExecution } from '@prisma/client';
 import { IWorkflow, INodeData, WorkflowStatus, INodeExecutionResult } from '@workflow-automation/common';
-
+import { nodeDatabase } from '../nodes/node-database'
 @Injectable()
 export class WorkflowService implements OnModuleInit, OnModuleDestroy {
   private runningWorkflows: Map<string, boolean> = new Map();
@@ -88,7 +88,6 @@ export class WorkflowService implements OnModuleInit, OnModuleDestroy {
       },
     });
   }
-
   async updateExecution(
     id: string,
     status: WorkflowStatus,
@@ -120,8 +119,9 @@ export class WorkflowService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  async executeWorkflow(workflow: IWorkflow): Promise<void> {
+  async executeWorkflow(workflow: IWorkflow) {
     this.runningWorkflows.set(workflow.id, true);
+   
     
     try {
       // Update execution status to running
@@ -136,7 +136,7 @@ export class WorkflowService implements OnModuleInit, OnModuleDestroy {
       const execution = await this.createExecution(workflow.id);
       const nodes = workflow.nodes;
       const edges = workflow.edges;
-
+      
       try {
         const nodeConnections = edges.reduce((acc, edge) => {
           if (!acc[edge.source]) {
@@ -148,18 +148,22 @@ export class WorkflowService implements OnModuleInit, OnModuleDestroy {
           });
           return acc;
         }, {} as Record<string, { target: string; condition: string | undefined }[]>);
-
+        
         const startNodes = nodes.filter(node => 
           !edges.some(edge => edge.target === node.id)
         );
-
-        for (const startNode of startNodes) {
-          await this.executeNode(startNode, workflow, nodes, nodeConnections, execution.id);
+        
+        const result: Record<string,any> = {};
+       
+       for (const startNode of startNodes) {
+        const nodeResult = await this.executeNode(startNode, workflow, nodes, nodeConnections, execution.id); 
+        result[startNode.id] = nodeResult;
         }
-
         await this.updateExecution(execution.id, 'completed');
+        return result;
+        
       } catch (error) {
-        console.error('Workflow execution failed:', error);
+       
         await this.updateExecution(
           execution.id,
           'failed',
@@ -167,6 +171,7 @@ export class WorkflowService implements OnModuleInit, OnModuleDestroy {
         );
       }
     } catch (error) {
+      
       this.runningWorkflows.delete(workflow.id);
       throw error;
     }
@@ -207,7 +212,7 @@ export class WorkflowService implements OnModuleInit, OnModuleDestroy {
     if (!this.runningWorkflows.get(workflow.id)) {
       return null;
     }
-
+  
     try {
       await this.updateExecution(
         executionId,
@@ -221,9 +226,16 @@ export class WorkflowService implements OnModuleInit, OnModuleDestroy {
         },
         node.id
       );
+  
+      // Fetch node execution logic from nodeDatabase
+      const nodeExecutor = nodeDatabase[node.data.type];
+      if (!nodeExecutor) {
+        throw new Error(`No executor found for node type: ${node.type}`);
+      }
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
+      const output = await nodeExecutor.execute(node.data);
+      console.log("Node Output", output);
+      // Update the execution status for this node
       await this.updateExecution(
         executionId,
         'running',
@@ -232,20 +244,59 @@ export class WorkflowService implements OnModuleInit, OnModuleDestroy {
             status: 'completed',
             message: `Executed ${node.data.name}`,
             endTime: new Date(),
-            output: { success: true },
+            output,
           },
         },
         node.id
       );
+      console.log("It is start of the workflow");
+      let condition = output.condition;
 
       const nextConnections = nodeConnections[node.id] || [];
       
+   
+      if(condition == undefined){
       for (const connection of nextConnections) {
-        const targetNode = nodes.find(n => n.id === connection.target);
-        if (targetNode) {
-          await this.executeNode(targetNode, workflow, nodes, nodeConnections, executionId);
+          const targetNode = nodes.find(n => n.id === connection.target);        
+          if (targetNode) {
+            targetNode.data.input = output.output;
+            targetNode.data.context = output.context;
+
+            
+            return await this.executeNode(targetNode, workflow, nodes, nodeConnections, executionId);
+          }
+      }
+    }
+      if (condition === true) {
+        const trueConnection = nodeConnections[node.id]?.find(conn => conn.condition === 'true');
+        
+        if (trueConnection) {
+          const trueTargetNode = nodes.find(n => n.id === trueConnection.target);
+          if (trueTargetNode) {
+            console.log("Condition is true, proceeding with alternative path to:", trueTargetNode.id);
+            trueTargetNode.data.input = output.output.feeds;
+            trueTargetNode.data.context = output.context;
+            return await this.executeNode(trueTargetNode, workflow, nodes, nodeConnections, executionId);
+            
+          }
         }
       }
+      
+      // Optionally, you can handle the case where condition is false (if required)
+      if (condition === false) {
+        const falseConnection = nodeConnections[node.id]?.find(conn => conn.condition === 'false');
+        
+        if (falseConnection) {
+          const falseTargetNode = nodes.find(n => n.id === falseConnection.target);
+          if (falseTargetNode) {
+            console.log("Condition is false, proceeding with alternative path to:", falseTargetNode.id);
+            falseTargetNode.data.input = output.output;
+            falseTargetNode.data.context = output.context;
+            return await this.executeNode(falseTargetNode, workflow, nodes, nodeConnections, executionId);
+          }
+        }
+      }
+    return output;
     } catch (error) {
       await this.updateExecution(
         executionId,
@@ -263,4 +314,7 @@ export class WorkflowService implements OnModuleInit, OnModuleDestroy {
       throw error;
     }
   }
+  
+ 
 }
+  

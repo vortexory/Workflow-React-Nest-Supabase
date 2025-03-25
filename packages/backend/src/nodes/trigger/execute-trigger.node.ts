@@ -22,21 +22,16 @@ const executeTriggerNode: NodeDefinition = {
       default: true,
     },
   ], // Add any additional properties if required
-  execute: async (context) => {
-    // Optional context for accessing runtime info, if your platform supports it
-    const isTriggerEnabled = context?.parameters?.triggerEnabled ?? true;
-
-    // Return the trigger output
-    if (isTriggerEnabled) {
-      return {
-        trigger: true, // Indicate the trigger is active
-      };
-    } else {
-      return {
-        trigger: false, // Indicate the trigger is disabled
-      };
-    }
-  },
+  execute: async (data) => {
+    const isTriggerEnabled = data.settings.triggerEnabled ?? true;
+  console.log("Executing Trigger Node:", data);
+  if(!isTriggerEnabled) {
+    return { success: true, output: null };
+  }else{
+    return { success: true, output: "Triggered" };
+  }
+  
+},
 };
 
 export default executeTriggerNode;

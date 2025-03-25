@@ -1,4 +1,9 @@
 import { NodeDefinition } from '../nodes.service';
+import * as vm from 'vm';
+interface Context{
+  currentIndex: number;
+  noItemsLeft: boolean;
+}
 
 const ifNode: NodeDefinition = {
   type: 'if',
@@ -32,29 +37,60 @@ const ifNode: NodeDefinition = {
       default: 'input === true'
     }
   ],
-  execute: async (inputs = {}, properties) => {
-    console.log('Inputs:', inputs);
-    // Validate inputs
-    if (typeof inputs.value === 'undefined') {
-      throw new Error('Input "value" is required and must be provided.');
+  execute: async (data) => {
+    console.log("Executing IF Node:", data);
+
+    // Get condition and input from data
+    const condition = data.settings?.condition || "false"; // Default to "false" if not provided
+    const input = data.input || []; // Assume input is an array
+
+    if (!condition || typeof condition !== "string") {
+      throw new Error("Invalid or missing condition for IF Node.");
     }
 
-    const { value } = inputs;
-    const { condition } = properties;
+    // Context initialization for handling evaluation state
+    const context: Context = data.context || { currentIndex: 0, noItemsLeft: true };
+
+    // Extract the current input item based on context
+    const currentItem = input[context.currentIndex];
+
+    // Guard against out-of-bound errors
+    if (!currentItem) {
+      return {
+        success: true,
+        output: null,
+        context: { ...context, noItemsLeft: true }, // Update context to signal completion
+      };
+    }
+
+    // Prepare sandbox for condition evaluation
+    const sandbox = { input: currentItem, result: false, console };
+    const vmContext = vm.createContext(sandbox);
 
     try {
-      // Create a safe condition evaluation environment
-      const fn = new Function('input', `return ${condition}`);
-      const result = fn(value);
+      // Execute the condition in the sandbox
+      vm.runInContext(`result = (${condition});`, vmContext);
 
-      return {
-        true: result ? value : null,
-        false: !result ? value : null
+      // Prepare the updated context
+      const updatedContext: Context = {
+        currentIndex: context.currentIndex + 1,
+        noItemsLeft: context.currentIndex + 1 >= input.length,
       };
+
+      console.log("Condition Evaluation Result:", sandbox.result);
+      console.log("Updated Context:", updatedContext);
+
+      // Return based on condition evaluation
+      if (sandbox.result) {
+        return { success: true, output: currentItem, context: updatedContext };
+      } else {
+        return { success: true, output: null, context: updatedContext };
+      }
     } catch (error) {
-      throw new Error(`Condition evaluation failed: ${error.message}`);
+      return { success: false, error: `Error evaluating condition: ${error.message}` };
     }
-  }
+  },
 };
+
 
 export default ifNode;

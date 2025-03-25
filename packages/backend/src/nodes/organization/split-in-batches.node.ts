@@ -1,4 +1,11 @@
 import { NodeDefinition } from '../nodes.service';
+interface Context{
+  currentIndex: number;
+  noItemsLeft: boolean;
+}
+
+// Sample context object
+
 
 const splitInBatchesNode: NodeDefinition = {
   type: 'splitInBatches',
@@ -28,30 +35,39 @@ const splitInBatchesNode: NodeDefinition = {
       default: 10
     }
   ],
-  execute: async (inputs, properties) => {
-    const { items } = inputs;
-    const { batchSize } = properties;
+  execute: async (data : any) => {
+    console.log("Executing Split in Batches Node:", data);
 
-    // Validate inputs
-    if (!Array.isArray(items)) {
-      throw new Error('Input "items" must be an array');
+    const batchSize = data.settings?.batchSize || 10;
+    const input = data.input || []; // Input array
+    const context: Context = data.context || { currentIndex: 0, noItemsLeft: false }; // Initialize context if not provided
+    await console.log("SplitInput", input);
+    if (!Array.isArray(input)) {
+      throw new Error("Input must be an array for Split in Batches Node");
     }
 
-    if (typeof batchSize !== 'number' || batchSize <= 0 || !Number.isInteger(batchSize)) {
-      throw new Error('Property "batchSize" must be a positive integer');
-    }
+    // Get the current batch based on the currentIndex
+    const batch = input.slice(context.currentIndex, context.currentIndex + batchSize);
 
-    // Create batches
-    const batches = [];
-    for (let i = 0; i < items.length; i += batchSize) {
-      batches.push(items.slice(i, i + batchSize));
-    }
+    // Check if this is the last batch
+    const noItemsLeft = context.currentIndex + batchSize >= input.length;
+   
 
-    // Return all batches
-    return {
-      batch: batches
+    // Update context
+    const updatedContext: Context = {
+      currentIndex: context.currentIndex + batchSize,
+      noItemsLeft,
     };
-  }
+
+    console.log("Batch:", batch);
+    console.log("Updated Context:", updatedContext);
+
+    return {
+      success: true,
+      output: batch, // Current batch
+      context: updatedContext, // Updated context
+    };
+  },
 };
 
 export default splitInBatchesNode;

@@ -29,35 +29,26 @@ const functionNode: NodeDefinition = {
       required: true,
     },
   ],
-  execute: async (inputs, properties) => {
-
-    const { code } = properties;
-    if (!code) {
-      throw new Error('Code is required');
+  execute: async (data) => {
+    console.log("Executing Function Node:", data);
+    // Simulate function execution
+    if (!data.settings?.code) {
+      throw new Error("No code provided for Function Node");
     }
-
-    // Create a sandboxed environment to execute user code safely
-    const sandbox = { inputs, result: null, console };
-    const context = vm.createContext(sandbox);
-
+    const input = data.input || {};
+    const sandbox = {input, result:null, console} 
+    const code = data.settings.code;
+   const context = vm.createContext(sandbox) 
     try {
-      // Validate the code syntax
-      new Function(code);
-
-      // Run the user-provided JavaScript code in the sandboxed environment
-      vm.runInContext(code, context);
-
-      // Ensure result is set
-      if (sandbox.result === null) {
-        throw new Error('Code must set "result" in the sandbox');
-      }
-
-      return { success: true, result: sandbox.result };
+     new Function(code);
+     vm.runInContext(code, context);   
+     if(sandbox.result){
+      return { success: true, output: sandbox.result };
+       }
     } catch (error) {
-      // Return the error message if the code execution fails
       return { success: false, error: error.message };
     }
-  }
+  },
 }
 
 

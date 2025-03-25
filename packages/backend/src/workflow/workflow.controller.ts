@@ -10,11 +10,13 @@ export class WorkflowController {
 
   @Get()
   findAll() {
+
     return this.workflowService.findAll();
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
+    console.log(id);
     return this.workflowService.findOne(id);
   }
 
@@ -24,6 +26,7 @@ export class WorkflowController {
   }
   @Post()
   create(@Body() createWorkflowDto: CreateWorkflowDto) {
+    console.log(createWorkflowDto);
     return this.workflowService.create(createWorkflowDto);
   }
 
@@ -37,14 +40,12 @@ export class WorkflowController {
     return this.workflowService.remove(id);
   }
 
-  @Post('execute')
-  async execute(@Body() workflow: IWorkflow) {
-    await this.workflowService.executeWorkflow(workflow);
-    return { success: true };
-  }
-
   @Post(':id/stop')
   async stopWorkflow(@Param('id') id: string) {
     return this.workflowService.stopWorkflow(id);
+  }
+  @Post('execute')
+  async TestExcuteWorkFlow(@Body() workflow: IWorkflow) {
+    return this.workflowService.executeWorkflow(workflow);
   }
 }
