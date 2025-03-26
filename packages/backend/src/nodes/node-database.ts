@@ -37,7 +37,8 @@ export const nodeDatabase: Record<string,{ execute: (data: any) => Promise<any> 
       }
       const input = data.input || {};
       const sandbox = {input, result:null, console} 
-      const code = data.settings.code;
+      const code = "result = [\n  {\n    json: {\n      url: \"https://dev.to/feed/n8n\"\n    }\n  },\n  {\n    json: {\n      url: \"https://medium.com/feed/n8n-io\"\n    }\n  }\n];";
+      // const code = data.settings.code;
       const context = vm.createContext(sandbox) 
       try {
        new Function(code);
@@ -64,7 +65,8 @@ export const nodeDatabase: Record<string,{ execute: (data: any) => Promise<any> 
       const input = data.input[i];
       
       // Extract the URL from the current input
-      const url = input.json.url;
+      // const url = input.json.url;
+      const url = "https://dev.to/feed/n8n";
 
       // Parse the feed for the current URL
       const feed = await parser.parseURL(url);
@@ -103,7 +105,7 @@ export const nodeDatabase: Record<string,{ execute: (data: any) => Promise<any> 
     }
 
     // Get the current batch based on the currentIndex
-    const batch = input.slice(context.currentIndex, context.currentIndex + batchSize);
+    const batch = input.slice(context.currentIndex, context.currentIndex + 1);
     console.log("Current Batch:", batch);
     // Check if this is the last batch
     const noItemsLeft = context.currentIndex + batchSize >= input.length;
@@ -185,7 +187,7 @@ export const nodeDatabase: Record<string,{ execute: (data: any) => Promise<any> 
 
     // Extract the current input item based on context
 
-    const currentItem = data.input[data.context.currentIndex];
+    const currentItem = data.input[0];
     // Guard against out-of-bound errors
     if (!currentItem) {
       return {
@@ -195,7 +197,8 @@ export const nodeDatabase: Record<string,{ execute: (data: any) => Promise<any> 
       };
     }
     try {
-      const result = new Function(`return ${condition}`)();
+      const result = true
+
       const updatedContext = {
         currentIndex: context.currentIndex + 1,
         noItemsLeft: context.currentIndex + 1 >= data.input.length,

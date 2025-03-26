@@ -270,7 +270,6 @@ export default function Editor() {
   const handleExecute = useCallback(async () => {
     try {
       dispatch(resetExecution());
-
       const workflow: IWorkflow = {
         id: workflowId || "temp",
         name: workflowName || "Untitled",
@@ -285,14 +284,14 @@ export default function Editor() {
             color: node.data?.color,
             type: node.data.type,
             properties: node.data.properties,
-            settings:
-              node.data.properties?.reduce(
-                (acc, prop) => {
-                  acc[prop.name] = prop.default;
-                  return acc;
-                },
-                {} as Record<string, any>
-              ) || {},
+            settings: node.data?.settings
+              // node.data.properties?.reduce(
+              //   (acc, prop) => {
+              //     acc[prop.name] = prop.default;
+              //     return acc;
+              //   },
+              //   {} as Record<string, any>
+              // ) || {},
           },
         })) as INodeData[],
         edges: edges.map((edge) => ({
@@ -304,7 +303,8 @@ export default function Editor() {
         })),
       };
 
-      await executeWorkflow(workflow);
+      const workResult = await executeWorkflow(workflow);
+      await console.log(workResult,"result");
     } catch (error) {
       console.error("Error executing workflow:", error);
     }
@@ -348,7 +348,7 @@ export default function Editor() {
             color: node.data?.color,
             type: node.data.type,
             properties: node.data.properties,
-            settings:
+            settings: 
               node.data.properties?.reduce(
                 (acc, prop) => {
                   acc[prop.name] = prop.default;

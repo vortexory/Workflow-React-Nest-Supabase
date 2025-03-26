@@ -63,20 +63,25 @@ export default function WorkflowList() {
         {workflows.map((workflow) => (
           <div
             key={workflow.id}
-            className="flex items-center justify-between p-4 rounded-lg border border-border hover:border-primary/50 cursor-pointer bg-background relative"
+            className="flex items-center justify-between rounded-lg border border-border hover:border-primary/50 cursor-pointer bg-background relative"
           >
-            <div>
-              <h2 className="font-medium">{workflow.name}</h2>
-              <p className="text-sm text-muted-foreground">
-                Created {new Date(workflow.createdAt!).toLocaleDateString()}
-              </p>
+            <div
+              onClick={() => navigate(`/editor/${workflow.id}`)}
+              className="flex-1 flex h-full items-center justify-between p-4"
+            >
+              <div>
+                <h2 className="font-medium">{workflow.name}</h2>
+                <p className="text-sm text-muted-foreground">
+                  Created {new Date(workflow.createdAt!).toLocaleDateString()}
+                </p>
+              </div>
+
+              <div className="text-sm text-muted-foreground">
+                {workflow.nodes.length} nodes
+              </div>
             </div>
 
-            <div className="text-sm text-muted-foreground">
-              {workflow.nodes.length} nodes
-            </div>
-
-            <div className="flex items-center text-[#909298] gap-3">
+            <div className="flex items-center text-[#909298] gap-3 p-4">
               <p className="border-2 text-[12px] px-1 border-[#909298] rounded-[4px]">
                 Owned by me
               </p>
@@ -112,7 +117,7 @@ export default function WorkflowList() {
                 }}
               >
                 <svg
-                  className="w-[10px] h-[10px] cursor-pointer"
+                  className="w-[15px] h-[15px] cursor-pointer"
                   aria-hidden="true"
                   focusable="false"
                   xmlns="http://www.w3.org/2000/svg"

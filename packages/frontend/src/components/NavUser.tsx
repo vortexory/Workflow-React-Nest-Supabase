@@ -29,7 +29,6 @@ import { useAuth } from "../auth/AuthContext";
 export function NavUser() {
   const { isMobile } = useSidebar();
   const { signOut, user } = useAuth();
-  console.log(user, "asdijflaksjfljasldjkl")
 
   return (
     <SidebarMenu>

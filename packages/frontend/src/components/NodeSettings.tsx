@@ -95,6 +95,7 @@ export function NodeSettings({ node, open, onClose, onChange }: NodeSettingsProp
 
   const onSubmit = (data: Record<string, any>) => {
     onChange(node.id, data);
+    console.log(data, "aaaaaaaaaaaaaa")
     onClose();
   };
 
