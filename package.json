@@ -18,6 +18,7 @@
     "ts-node": "^10.9.2"
   },
   "dependencies": {
+    "@nestjs/platform-express": "^11.0.12",
     "openai": "^4.85.1",
     "reflect-metadata": "^0.2.2"
   }

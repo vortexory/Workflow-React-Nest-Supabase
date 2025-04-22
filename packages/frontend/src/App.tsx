@@ -5,6 +5,7 @@ import Editor from "./pages/Editor";
 import WorkflowList from "./pages/WorkflowList";
 import Signup from "./auth/Signup";
 import Login from "./auth/Login";
+import CheckEmail from "./auth/CheckEmail";
 import "reactflow/dist/style.css";
 import { PrivateRoute } from "./auth/PrivateRoute";
 import { AuthProvider } from "./auth/AuthContext";
@@ -13,7 +14,7 @@ import Layout from "./layout";
 
 function AppRoutes() {
   const location = useLocation();
-  const authPages = ["/login", "/signup"];
+  const authPages = ["/login", "/signup", "/check", "/auth/callback"];
 
   const isAuthPage = authPages.includes(location.pathname);
 
@@ -23,6 +24,7 @@ function AppRoutes() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/check" element={<CheckEmail />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
         </Routes>
       ) : (

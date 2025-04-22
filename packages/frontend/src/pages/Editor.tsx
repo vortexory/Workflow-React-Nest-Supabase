@@ -45,6 +45,7 @@ import {
   INodeType,
   WorkflowStatus,
 } from "@workflow-automation/common";
+import { Button } from "../components/ui/button";
 import { IWorkflow, IEdge } from "@workflow-automation/common";
 import { useParams, useNavigate } from "react-router-dom";
 import { WorkflowNameDialog } from "../components/WorkflowNameDialog";
@@ -102,6 +103,7 @@ const supabase = createClient(
 export default function Editor() {
   const dispatch = useAppDispatch();
   const [visible, setVisible] = useState(false);
+  const [flag, setFlag] = useState(false);
   const { nodes, edges, executionStatus } = useAppSelector(
     (state) => state.workflow
   );
@@ -117,6 +119,8 @@ export default function Editor() {
     useState<ReactFlowInstance | null>(null);
   const { id } = useParams();
   const navigate = useNavigate();
+
+  const [executeResult, setExecuteResult] = useState({});
 
   useEffect(() => {
     if (id) {
@@ -285,13 +289,13 @@ export default function Editor() {
             type: node.data.type,
             properties: node.data.properties,
             settings: node.data?.settings
-              // node.data.properties?.reduce(
-              //   (acc, prop) => {
-              //     acc[prop.name] = prop.default;
-              //     return acc;
-              //   },
-              //   {} as Record<string, any>
-              // ) || {},
+            // node.data.properties?.reduce(
+            //   (acc, prop) => {
+            //     acc[prop.name] = prop.default;
+            //     return acc;
+            //   },
+            //   {} as Record<string, any>
+            // ) || {},
           },
         })) as INodeData[],
         edges: edges.map((edge) => ({
@@ -304,7 +308,9 @@ export default function Editor() {
       };
 
       const workResult = await executeWorkflow(workflow);
-      await console.log(workResult,"result");
+      workResult && setFlag(true);
+      setExecuteResult(workResult);
+      await console.log(workResult, "result");
     } catch (error) {
       console.error("Error executing workflow:", error);
     }
@@ -348,7 +354,7 @@ export default function Editor() {
             color: node.data?.color,
             type: node.data.type,
             properties: node.data.properties,
-            settings: 
+            settings:
               node.data.properties?.reduce(
                 (acc, prop) => {
                   acc[prop.name] = prop.default;
@@ -379,7 +385,7 @@ export default function Editor() {
   };
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen relative">
       <div className="flex-1 flex flex-col">
         <div className="h-[40px] border-b flex items-center px-4 gap-2 relative">
           {executionStatus === "running" ? (
@@ -479,6 +485,15 @@ export default function Editor() {
         onSave={handleSaveWithName}
         initialName={workflowName}
       />
+
+      {flag && executeResult && (
+        <div className="absolute left-0 top-0 w-[100%] min-h-[100%] z-[100]">
+          <div className="p-5 bg-[#22c55e] text-wrap">
+            <Button onClick={() => setFlag(false)}>Close</Button>
+            <pre>{JSON.stringify(executeResult, null, 2)}</pre>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

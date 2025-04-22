@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { supabase } from '../auth/supabase/supabaseClient';
 import { IWorkflow } from '@workflow-automation/common';
 
 export const api = axios.create({
@@ -6,6 +7,18 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+api.interceptors.request.use(async (config) => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: { session } } = await supabase.auth.getSession();
+    config.headers.Authorization = `Bearer ${session?.access_token}`;
+    config.headers['Uuid'] = user.id;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
 });
 
 export const getNodes = async () => {

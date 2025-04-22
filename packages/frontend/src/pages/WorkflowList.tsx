@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getWorkflows } from "../lib/api";
 import { useNavigate } from "react-router-dom";
 import { IWorkflow } from "@workflow-automation/common";
+import { supabase } from "../auth/supabase/supabaseClient";
 
 export default function WorkflowList() {
   const navigate = useNavigate();
@@ -14,6 +15,24 @@ export default function WorkflowList() {
   useEffect(() => {
     loadWorkflows();
   }, []);
+  useEffect(() => {
+    const handleAuthCallback = async () => {
+      try {
+        // Get current session
+        const { data, error } = await supabase.auth.getUser();
+
+        if (error) {
+          console.error("Error fetching user:", error);
+          return;
+        }
+
+        console.log("Session Data CallBack:", data);
+      } catch (err) {
+        console.error("Unexpected error:", err);
+      } 
+    };
+    handleAuthCallback();
+  });
 
   const loadWorkflows = async () => {
     try {
@@ -96,14 +115,12 @@ export default function WorkflowList() {
               >
                 <p>{activeStates[workflow.id] ? "Active" : "Inactive"}</p>
                 <div
-                  className={`w-[30px] h-[15px] relative p-[1px] rounded-[10px] transition-all ${
-                    activeStates[workflow.id] ? "bg-green-500" : "bg-[#909298]"
-                  }`}
+                  className={`w-[30px] h-[15px] relative p-[1px] rounded-[10px] transition-all ${activeStates[workflow.id] ? "bg-green-500" : "bg-[#909298]"
+                    }`}
                 >
                   <div
-                    className={`w-[13px] h-[13px] bg-white rounded-full absolute top-[1px] transition-all ${
-                      activeStates[workflow.id] ? "right-[1px]" : "left-[1px]"
-                    }`}
+                    className={`w-[13px] h-[13px] bg-white rounded-full absolute top-[1px] transition-all ${activeStates[workflow.id] ? "right-[1px]" : "left-[1px]"
+                      }`}
                   ></div>
                 </div>
               </div>
